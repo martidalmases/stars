@@ -1,15 +1,5 @@
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 
-// Settings
-const lookSpeed = 0.002;
-const maxPitch = Math.PI / 2.2;
-
-let yaw = 0;
-let pitch = 0;
-let isDragging = false;
-let lastX = 0;
-let lastY = 0;
-
 const camera = new THREE.PerspectiveCamera(
   60,
   window.innerWidth / window.innerHeight,
@@ -17,84 +7,33 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-// Initial position (eye height)
-camera.position.set(0, 1.6, 0);
+camera.position.set(0, 1.6, 0); // eye level
 
+// Rotation variables
+let pitch = 0;
+let yaw = 0;
+const sensitivity = 0.002; // adjust speed
 
-// Mouse input
-document.addEventListener("mousedown", (e) => {
-  isDragging = true;
-  lastX = e.clientX;
-  lastY = e.clientY;
+// Request pointer lock when clicking
+document.body.addEventListener("click", () => {
+  document.body.requestPointerLock();
 });
 
-document.addEventListener("mouseup", () => {
-  isDragging = false;
-});
-
+// Mouse move handler
 document.addEventListener("mousemove", (e) => {
+  if (document.pointerLockElement !== document.body) return;
 
-  if (!isDragging) return;
+  yaw   -= e.movementX * sensitivity;
+  pitch -= e.movementY * sensitivity;
 
-  const dx = e.clientX - lastX;
-  const dy = e.clientY - lastY;
-
-  lastX = e.clientX;
-  lastY = e.clientY;
-
-  yaw   -= dx * lookSpeed;
-  pitch -= dy * lookSpeed;
-
+  const maxPitch = Math.PI / 2 - 0.05; // prevent flipping
   pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
 });
-
-
-// Touch (mobile support)
-document.addEventListener("touchstart", (e) => {
-  if (e.touches.length !== 1) return;
-
-  isDragging = true;
-
-  lastX = e.touches[0].clientX;
-  lastY = e.touches[0].clientY;
-});
-
-document.addEventListener("touchend", () => {
-  isDragging = false;
-});
-
-document.addEventListener("touchmove", (e) => {
-
-  if (!isDragging || e.touches.length !== 1) return;
-
-  const dx = e.touches[0].clientX - lastX;
-  const dy = e.touches[0].clientY - lastY;
-
-  lastX = e.touches[0].clientX;
-  lastY = e.touches[0].clientY;
-
-  yaw   -= dx * lookSpeed;
-  pitch -= dy * lookSpeed;
-
-  pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
-});
-
-
-// Public API
 
 export function createCamera() {
   return camera;
 }
 
 export function updateCamera() {
-
-  const euler = new THREE.Euler(
-    pitch,
-    yaw,
-    0,
-    "YXZ"
-  );
-
-  camera.quaternion.setFromEuler(euler);
+  camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, "YXZ"));
 }
-
