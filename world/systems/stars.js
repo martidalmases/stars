@@ -6,15 +6,16 @@ let currentStoryIndex = 0; // tracks which story star is active
 
 // Heart-shaped story star positions (~500m in front of camera)
 export const storyStarPositions = [
-  new THREE.Vector3(-3, 10, -500),
-  new THREE.Vector3(-1.5, 15, -500),
-  new THREE.Vector3(0, 18, -500),
-  new THREE.Vector3(1.5, 15, -500),
-  new THREE.Vector3(3, 10, -500),
-  new THREE.Vector3(-1.5, 12, -500),
-  new THREE.Vector3(1.5, 12, -500),
-  new THREE.Vector3(0, 11, -500)
+  new THREE.Vector3(-40, 50, -500),
+  new THREE.Vector3(-20, 75, -500),
+  new THREE.Vector3(0, 90, -500),
+  new THREE.Vector3(20, 75, -500),
+  new THREE.Vector3(40, 50, -500),
+  new THREE.Vector3(-20, 60, -500),
+  new THREE.Vector3(20, 60, -500),
+  new THREE.Vector3(0, 55, -500)
 ];
+
 
 // Utility: check if star is within cone of view
 function isStarLookedAt(star, camera, coneAngle = Math.PI / 12) {
