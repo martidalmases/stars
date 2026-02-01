@@ -14,13 +14,5 @@ export function createScene() {
   const ambient = new THREE.AmbientLight(0xffffff, 0.4);
   scene.add(ambient);
 
-  // Quick test object
-  const geometry = new THREE.SphereGeometry(0.2, 16, 16);
-  const material = new THREE.MeshBasicMaterial({ color: 0xffdd99 });
-  const sphere = new THREE.Mesh(geometry, material);
-
-  sphere.position.set(0, 1.6, -3);
-  scene.add(sphere);
-
   return scene;
 }
