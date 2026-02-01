@@ -31,7 +31,7 @@ export function createStars(scene, backgroundCount = 50) {
   // Story stars
   storyStarPositions.forEach((pos, i) => {
     const material = new THREE.MeshBasicMaterial({ color: 0xfff4cc });
-    const geometry = new THREE.SphereGeometry(0.25, 12, 12); // smaller base
+    const geometry = new THREE.SphereGeometry(10, 12, 12); // smaller base
     star.material.fog = false;
 
     const star = new THREE.Mesh(geometry, material);
