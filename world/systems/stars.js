@@ -61,6 +61,7 @@ stars.forEach((star) => {
     star.scale.lerp(new THREE.Vector3(1,1,1), 0.05);
   }
 });
+}
 
 
 // Click interaction
