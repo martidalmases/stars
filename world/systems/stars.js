@@ -48,32 +48,19 @@ const center = new THREE.Vector2(0, 0);
 // Update highlighting
 export function updateStars(camera) {
 
-  raycaster.setFromCamera(center, camera);
+const hits = raycaster.intersectObjects(stars);
 
-  const hits = raycaster.intersectObjects(stars);
-
-  if (hits.length > 0) {
-
-    const star = hits[0].object;
-
-    if (activeStar !== star) {
-
-      if (activeStar) {
-        activeStar.material.color.set(0xffffff);
-      }
-
-      activeStar = star;
-      star.material.color.set(0xfff4cc);
-    }
-
+stars.forEach((star) => {
+  if (star === hits[0]?.object) {
+    // Looked at → brighten and scale up
+    star.material.color.lerp(new THREE.Color(0xfff4cc), 0.1);
+    star.scale.lerp(new THREE.Vector3(1.5,1.5,1.5), 0.1);
   } else {
-
-    if (activeStar) {
-      activeStar.material.color.set(0xffffff);
-      activeStar = null;
-    }
+    // Not looked at → fade back
+    star.material.color.lerp(new THREE.Color(0xffffff), 0.05);
+    star.scale.lerp(new THREE.Vector3(1,1,1), 0.05);
   }
-}
+});
 
 
 // Click interaction
