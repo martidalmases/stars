@@ -26,12 +26,11 @@ function isStarLookedAt(star, camera, coneAngle = Math.PI / 18) {
 
 export function createStars(scene, backgroundCount = 50) {
   stars.length = 0;
-  star.material.fog = false;
 
   // Story stars
   storyStarPositions.forEach((pos, i) => {
     const material = new THREE.MeshBasicMaterial({ color: 0xfff4cc });
-    const geometry = new THREE.SphereGeometry(10, 12, 12); // smaller base
+    const geometry = new THREE.SphereGeometry(1, 12, 12); // smaller base
     star.material.fog = false;
 
     const star = new THREE.Mesh(geometry, material);
