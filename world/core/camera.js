@@ -7,28 +7,23 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-camera.position.set(0, 1.6, 0);
-
+camera.position.set(0, 1.6, 0); // eye height
 
 // Rotation state
 let pitch = 0;
 let yaw = 0;
-
 let targetPitch = 0;
 let targetYaw = 0;
 
-
-// Tuning (feel free to tweak later)
+// Tuning
 const sensitivity = 0.0015;
 const smoothing = 0.08;
 const maxPitch = Math.PI / 2.2;
 
-
-// Pointer lock
+// Pointer lock state
 let locked = false;
 
-
-// UI hint
+// ESC hint
 const hint = document.createElement("div");
 hint.innerHTML = "Press ESC to exit";
 hint.style.position = "fixed";
@@ -41,55 +36,35 @@ hint.style.fontFamily = "system-ui, sans-serif";
 hint.style.pointerEvents = "none";
 hint.style.opacity = "0";
 hint.style.transition = "opacity 0.5s";
-
 document.body.appendChild(hint);
 
-
-// Request lock
+// Request pointer lock on click
 document.body.addEventListener("click", () => {
-  if (!locked) {
-    document.body.requestPointerLock();
-  }
+  if (!locked) document.body.requestPointerLock();
 });
 
-
-// Lock change
+// Pointer lock change
 document.addEventListener("pointerlockchange", () => {
   locked = document.pointerLockElement === document.body;
-
   hint.style.opacity = locked ? "1" : "0";
 });
 
-
 // Mouse movement
 document.addEventListener("mousemove", (e) => {
-
   if (!locked) return;
-
   targetYaw   -= e.movementX * sensitivity;
   targetPitch -= e.movementY * sensitivity;
-
-  targetPitch = Math.max(
-    -maxPitch,
-     Math.min(maxPitch, targetPitch)
-  );
+  targetPitch = Math.max(-maxPitch, Math.min(maxPitch, targetPitch));
 });
 
-
 // Public API
-
 export function createCamera() {
   return camera;
 }
 
-
 export function updateCamera() {
-
-  // Smoothly interpolate (dreamy feeling)
-  yaw   += (targetYaw   - yaw)   * smoothing;
+  // Smoothly interpolate toward target (dreamy effect)
+  yaw   += (targetYaw - yaw) * smoothing;
   pitch += (targetPitch - pitch) * smoothing;
-
-  camera.quaternion.setFromEuler(
-    new THREE.Euler(pitch, yaw, 0, "YXZ")
-  );
+  camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, "YXZ"));
 }
