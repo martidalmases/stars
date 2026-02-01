@@ -47,22 +47,33 @@ const center = new THREE.Vector2(0, 0);
 
 // Update highlighting
 export function updateStars(camera) {
+  // Raycast from center of screen
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const hits = raycaster.intersectObjects(stars);
 
-const hits = raycaster.intersectObjects(stars);
+  stars.forEach((star) => {
+    const isLookedAt = star === hits[0]?.object;
 
-stars.forEach((star) => {
-  if (star === hits[0]?.object) {
-    // Looked at → brighten and scale up
-    star.material.color.lerp(new THREE.Color(0xfff4cc), 0.1);
-    star.scale.lerp(new THREE.Vector3(1.5,1.5,1.5), 0.1);
-  } else {
-    // Not looked at → fade back
-    star.material.color.lerp(new THREE.Color(0xffffff), 0.05);
-    star.scale.lerp(new THREE.Vector3(1,1,1), 0.05);
-  }
-});
+    // Target scale & color
+    const targetScale = isLookedAt ? 1.5 : 1.0;
+    const targetColor = new THREE.Color(isLookedAt ? 0xfff4cc : 0xffffff);
+
+    // Smooth scale
+    star.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08);
+
+    // Smooth color
+    star.material.color.lerp(targetColor, 0.08);
+
+    // Optional flicker for stars not being looked at
+    if (!isLookedAt) {
+      const flicker = 0.85 + Math.random() * 0.3; // 0.85 → 1.15
+      star.material.color.multiplyScalar(flicker);
+    }
+  });
+
+  // Store active star for clicks
+  activeStar = hits[0]?.object || null;
 }
-
 
 // Click interaction
 export function handleStarClick() {
