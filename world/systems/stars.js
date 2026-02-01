@@ -6,14 +6,19 @@ let currentStoryIndex = 0; // tracks which story star is active
 
 // Heart-shaped story star positions (~500m in front of camera)
 export const storyStarPositions = [
-  new THREE.Vector3(-40, 50, -500),
-  new THREE.Vector3(-20, 75, -500),
-  new THREE.Vector3(0, 90, -500),
-  new THREE.Vector3(20, 75, -500),
-  new THREE.Vector3(40, 50, -500),
-  new THREE.Vector3(-20, 60, -500),
-  new THREE.Vector3(20, 60, -500),
-  new THREE.Vector3(0, 55, -500)
+  // Left wing
+  new THREE.Vector3(-60, 80, -500),
+  new THREE.Vector3(-40, 100, -500),
+  new THREE.Vector3(-20, 120, -500),
+  
+  // Right wing
+  new THREE.Vector3(20, 120, -500),
+  new THREE.Vector3(40, 100, -500),
+  new THREE.Vector3(60, 80, -500),
+  
+  // Center bottom
+  new THREE.Vector3(0, 50, -500),
+  new THREE.Vector3(0, 90, -500) // top center
 ];
 
 
