@@ -4,20 +4,25 @@ export const stars = [];
 let activeStar = null;
 let currentStoryIndex = 0; // tracks which story star is active
 
-// Heart-shaped story star positions
+// Heart-shaped story star positions (~500m in front of camera)
 export const storyStarPositions = [
-  new THREE.Vector3(-3, 1.0, -30),
-  new THREE.Vector3(-1.5, 2.5, -30),
-  new THREE.Vector3(0, 3.0, -30),
-  new THREE.Vector3(1.5, 2.5, -30),
-  new THREE.Vector3(3, 1.0, -30),
-  new THREE.Vector3(-1.5, 1.8, -30),
-  new THREE.Vector3(1.5, 1.8, -30),
-  new THREE.Vector3(0, 1.5, -30)
+  new THREE.Vector3(-3, 10, -500),
+  new THREE.Vector3(-1.5, 15, -500),
+  new THREE.Vector3(0, 18, -500),
+  new THREE.Vector3(1.5, 15, -500),
+  new THREE.Vector3(3, 10, -500),
+  new THREE.Vector3(-1.5, 12, -500),
+  new THREE.Vector3(1.5, 12, -500),
+  new THREE.Vector3(0, 11, -500)
 ];
 
-const raycaster = new THREE.Raycaster();
-const center = new THREE.Vector2(0, 0);
+// Utility: check if star is within cone of view
+function isStarLookedAt(star, camera, coneAngle = Math.PI / 18) {
+  const dirToStar = star.position.clone().sub(camera.position).normalize();
+  const cameraDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  const angle = cameraDir.angleTo(dirToStar);
+  return angle < coneAngle;
+}
 
 export function createStars(scene, backgroundCount = 50) {
   stars.length = 0;
@@ -25,7 +30,7 @@ export function createStars(scene, backgroundCount = 50) {
   // Story stars
   storyStarPositions.forEach((pos, i) => {
     const material = new THREE.MeshBasicMaterial({ color: 0xfff4cc });
-    const geometry = new THREE.SphereGeometry(0.4, 12, 12); // bigger for story stars
+    const geometry = new THREE.SphereGeometry(0.15, 12, 12); // smaller base
 
     const star = new THREE.Mesh(geometry, material);
     star.position.copy(pos);
@@ -33,7 +38,7 @@ export function createStars(scene, backgroundCount = 50) {
     star.userData = {
       id: i,
       type: "story",
-      active: i === 0,   // only first star responds initially
+      active: i === 0,
       clicked: false
     };
 
@@ -41,19 +46,19 @@ export function createStars(scene, backgroundCount = 50) {
     scene.add(star);
   });
 
-  // Background filler stars
+  // Background stars
   for (let i = 0; i < backgroundCount; i++) {
     const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const geometry = new THREE.SphereGeometry(0.08, 12, 12);
+    const geometry = new THREE.SphereGeometry(0.05, 8, 8);
     const star = new THREE.Mesh(geometry, material);
 
-    const radius = 80;
+    const radius = 1000; // place around sky sphere
     const theta = Math.random() * Math.PI * 2;
-    const phi = Math.random() * Math.PI * 0.6 + 0.2;
+    const phi = Math.random() * Math.PI * 0.5 + 0.1;
 
     star.position.set(
       Math.cos(theta) * Math.sin(phi) * radius,
-      Math.cos(phi) * radius + 10,
+      Math.cos(phi) * radius + 20,
       Math.sin(theta) * Math.sin(phi) * radius
     );
 
@@ -65,61 +70,38 @@ export function createStars(scene, backgroundCount = 50) {
 }
 
 export function updateStars(camera) {
-  raycaster.setFromCamera(center, camera);
-  const hits = raycaster.intersectObjects(stars);
-
-  const lookedAtStar = hits[0]?.object || null;
-
   stars.forEach((star, i) => {
     const isStory = star.userData.type === "story";
 
     if (isStory) {
       const activeIndex = currentStoryIndex;
-
       if (i === activeIndex) {
-        // Only current story star responds
-        const isLookedAt = star === lookedAtStar;
+        const lookedAt = isStarLookedAt(star, camera, Math.PI / 12); // wider cone
 
-        // Target scale & color
-        const targetScale = isLookedAt ? 2.0 : 1.5; // noticeable
-        const targetColor = new THREE.Color(isLookedAt ? 0xffffaa : 0xfff4cc);
+        const targetScale = lookedAt ? 0.35 : 0.25;
+        const targetColor = new THREE.Color(lookedAt ? 0xffffaa : 0xfff4cc);
 
         star.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08);
         star.material.color.lerp(targetColor, 0.08);
 
-        if (isLookedAt) activeStar = star;
+        if (lookedAt) activeStar = star;
       } else if (star.userData.clicked) {
-        // Already clicked stars remain bright & big
-        star.scale.lerp(new THREE.Vector3(2.0, 2.0, 2.0), 0.08);
+        // previously clicked → stay bright/big
+        star.scale.lerp(new THREE.Vector3(0.35, 0.35, 0.35), 0.08);
         star.material.color.lerp(new THREE.Color(0xffffaa), 0.08);
       } else {
-        // Future stars stay small
-        star.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.08);
+        // future stars
+        star.scale.lerp(new THREE.Vector3(0.15, 0.15, 0.15), 0.08);
         star.material.color.lerp(new THREE.Color(0xfff4cc), 0.08);
       }
     } else {
-      // Background stars flicker
-      const targetScale = 0.8;
-      const targetColor = new THREE.Color(0xffffff);
-      star.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.05);
+      // background stars
+      star.scale.lerp(new THREE.Vector3(0.05, 0.05, 0.05), 0.05);
       const flicker = 0.85 + Math.random() * 0.3;
-      star.material.color.copy(targetColor).multiplyScalar(flicker);
+      star.material.color.copy(new THREE.Color(0xffffff)).multiplyScalar(flicker);
     }
   });
 }
 
 export function handleStarClick() {
-  if (!activeStar) return;
-
-  // Mark current story star as clicked
-  activeStar.userData.clicked = true;
-  activeStar = null;
-
-  // Move to next star
-  currentStoryIndex++;
-  if (currentStoryIndex >= storyStarPositions.length) {
-    currentStoryIndex = storyStarPositions.length - 1; // stop at last
-  }
-
-  console.log("Story star clicked:", currentStoryIndex);
-}
+  if (!
