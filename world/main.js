@@ -8,20 +8,16 @@ const scene = createScene();
 const camera = createCamera();
 const renderer = createRenderer();
 
-// Create stars
-createStars(scene, 50); // 50 filler stars + fixed story stars
+createStars(scene, 500);
 
-// Resize
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Click → star interaction
 window.addEventListener("click", () => handleStarClick());
 
-// Render loop
 function animate() {
   requestAnimationFrame(animate);
 
