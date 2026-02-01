@@ -1,3 +1,5 @@
+console.log("Main.js loaded");
+
 import { createRenderer } from "./core/renderer.js";
 import { createScene } from "./core/scene.js";
 import { createCamera, updateCamera } from "./core/camera.js";
