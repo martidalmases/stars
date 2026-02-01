@@ -1,23 +1,16 @@
-console.log("Main.js loaded! This confirms modules work.");
-
 import { createRenderer } from "./core/renderer.js";
 import { createScene } from "./core/scene.js";
 import { createCamera, updateCamera } from "./core/camera.js";
 
-// Core
 const scene = createScene();
 const camera = createCamera();
 const renderer = createRenderer();
 
-// Resize
-window.addEventListener("resize", onResize);
-
-function onResize() {
+window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
-}
+});
 
 // Animation loop
 function animate() {
@@ -28,4 +21,3 @@ function animate() {
 }
 
 animate();
-
