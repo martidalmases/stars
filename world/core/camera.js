@@ -7,33 +7,89 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-camera.position.set(0, 1.6, 0); // eye level
+camera.position.set(0, 1.6, 0);
 
-// Rotation variables
+
+// Rotation state
 let pitch = 0;
 let yaw = 0;
-const sensitivity = 0.002; // adjust speed
 
-// Request pointer lock when clicking
+let targetPitch = 0;
+let targetYaw = 0;
+
+
+// Tuning (feel free to tweak later)
+const sensitivity = 0.0015;
+const smoothing = 0.08;
+const maxPitch = Math.PI / 2.2;
+
+
+// Pointer lock
+let locked = false;
+
+
+// UI hint
+const hint = document.createElement("div");
+hint.innerHTML = "Press ESC to exit";
+hint.style.position = "fixed";
+hint.style.bottom = "20px";
+hint.style.left = "50%";
+hint.style.transform = "translateX(-50%)";
+hint.style.color = "rgba(255,255,255,0.6)";
+hint.style.fontSize = "14px";
+hint.style.fontFamily = "system-ui, sans-serif";
+hint.style.pointerEvents = "none";
+hint.style.opacity = "0";
+hint.style.transition = "opacity 0.5s";
+
+document.body.appendChild(hint);
+
+
+// Request lock
 document.body.addEventListener("click", () => {
-  document.body.requestPointerLock();
+  if (!locked) {
+    document.body.requestPointerLock();
+  }
 });
 
-// Mouse move handler
+
+// Lock change
+document.addEventListener("pointerlockchange", () => {
+  locked = document.pointerLockElement === document.body;
+
+  hint.style.opacity = locked ? "1" : "0";
+});
+
+
+// Mouse movement
 document.addEventListener("mousemove", (e) => {
-  if (document.pointerLockElement !== document.body) return;
 
-  yaw   -= e.movementX * sensitivity;
-  pitch -= e.movementY * sensitivity;
+  if (!locked) return;
 
-  const maxPitch = Math.PI / 2 - 0.05; // prevent flipping
-  pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+  targetYaw   -= e.movementX * sensitivity;
+  targetPitch -= e.movementY * sensitivity;
+
+  targetPitch = Math.max(
+    -maxPitch,
+     Math.min(maxPitch, targetPitch)
+  );
 });
+
+
+// Public API
 
 export function createCamera() {
   return camera;
 }
 
+
 export function updateCamera() {
-  camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, "YXZ"));
+
+  // Smoothly interpolate (dreamy feeling)
+  yaw   += (targetYaw   - yaw)   * smoothing;
+  pitch += (targetPitch - pitch) * smoothing;
+
+  camera.quaternion.setFromEuler(
+    new THREE.Euler(pitch, yaw, 0, "YXZ")
+  );
 }
