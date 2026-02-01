@@ -1,18 +1,14 @@
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 
 export function createScene() {
+  const skyGeo = new THREE.SphereGeometry(1000, 64, 64);
+  const skyMat = new THREE.MeshBasicMaterial({
+    color: 0x000011, // dark night base
+    side: THREE.BackSide // render inside of sphere
+  });
 
-  const scene = new THREE.Scene();
+  const sky = new THREE.Mesh(skyGeo, skyMat);
+  scene.add(sky);
 
-  // Dark night background
-  scene.background = new THREE.Color(0x020207);
-
-  // Subtle fog
-  scene.fog = new THREE.FogExp2(0x020207, 0.015);
-
-  // Soft ambient light
-  const ambient = new THREE.AmbientLight(0xffffff, 0.4);
-  scene.add(ambient);
-
-  return scene;
+  return sky;
 }
