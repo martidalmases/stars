@@ -15,7 +15,7 @@ const renderer = createRenderer();
 
 
 // Stars
-createStars(scene, 12);
+createStars(scene, 50);
 
 
 // Resize
