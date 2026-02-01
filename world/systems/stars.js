@@ -104,4 +104,15 @@ export function updateStars(camera) {
 }
 
 export function handleStarClick() {
-  if (!
+  if (!activeStar) return;
+
+  activeStar.userData.clicked = true;
+  activeStar = null;
+
+  currentStoryIndex++;
+  if (currentStoryIndex >= storyStarPositions.length) {
+    currentStoryIndex = storyStarPositions.length - 1; // stop at last
+  }
+
+  console.log("Story star clicked:", currentStoryIndex);
+}
