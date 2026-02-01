@@ -7,18 +7,20 @@ export function createScene() {
   // Dark night background
   scene.background = new THREE.Color(0x020207);
 
-  // Subtle fog (optional now, useful later)
+  // Subtle fog
   scene.fog = new THREE.FogExp2(0x020207, 0.015);
 
   // Soft ambient light
   const ambient = new THREE.AmbientLight(0xffffff, 0.4);
   scene.add(ambient);
 
-  // Moon-like directional light
-  const moon = new THREE.DirectionalLight(0x88aaff, 0.8);
-  moon.position.set(10, 20, 10);
-  scene.add(moon);
+  // Quick test object
+  const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffdd99 });
+  const sphere = new THREE.Mesh(geometry, material);
+
+  sphere.position.set(0, 1.6, -3);
+  scene.add(sphere);
 
   return scene;
 }
-
