@@ -12,7 +12,7 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Animation loop
+
 function animate() {
   requestAnimationFrame(animate);
 
