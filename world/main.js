@@ -1,4 +1,4 @@
-console.log("Main.js loaded");
+console.log("Main.js loaded! This confirms modules work.");
 
 import { createRenderer } from "./core/renderer.js";
 import { createScene } from "./core/scene.js";
