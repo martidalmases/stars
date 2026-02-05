@@ -10,7 +10,7 @@ return scene;
 
 
 export function createSkySphere() {
-const geo = new THREE.SphereGeometry(1000, 64, 64);
+const geo = new THREE.SphereGeometry(1010, 64, 64);
 
 
 const mat = new THREE.ShaderMaterial({
