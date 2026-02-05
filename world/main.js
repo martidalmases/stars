@@ -74,4 +74,5 @@ new THREE.Vector3(0.1, -0.8, -0.5),
 new THREE.Vector3(0.4, -0.6, -0.3),
 new THREE.Vector3(0.7, -0.3, 0.1),
 new THREE.Vector3(0.9, -0.1, 0.4)
+];
 animate();
