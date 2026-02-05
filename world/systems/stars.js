@@ -30,7 +30,7 @@ export class BackgroundStars {
   constructor({
     count = 4000,
     radius = 1000,
-    size = 0.8,
+    size = 40,
     color = 0xffffff
   } = {}) {
     this.count = count;
