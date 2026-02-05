@@ -1,4 +1,4 @@
-import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js(https://unpkg.com/three@0.158.0/build/three.module.js)";
+import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 
 import { createCamera, createDreamyController } from "./core/camera.js";
 import { createScene, createSkySphere } from "./core/scene.js";
