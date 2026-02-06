@@ -101,7 +101,7 @@ class StoryStar {
     this.state = STORY_STATE.STANDBY;
 
     // Sizes
-    this.baseSize = 1.5; // same as background
+    this.baseSize = 3; // same as background
     this.currentSize = this.baseSize;
     this.targetSize = this.baseSize;
 
@@ -152,8 +152,8 @@ class StoryStar {
 
       case STORY_STATE.SELECTED:
 
-        this.targetSize = this.baseSize * 2.2;
-        this.material.opacity = 1.0;
+        this.targetSize = this.baseSize * 3;
+        this.material.opacity = 2;
 
         break;
 
