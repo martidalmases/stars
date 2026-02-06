@@ -64,7 +64,7 @@ scene.add(sky);
 const bgStars = new BackgroundStars({
 count: 5000,
 radius: 1000,
-size: 1.5
+size: 3
 });
 scene.add(bgStars.create());
 
