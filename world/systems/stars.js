@@ -95,7 +95,7 @@ export const STORY_STATE = {
 };
 
 class StoryStar {
-  constructor(index, position, baseSize = 20, color = 0xffffff) {
+  constructor(index, position, baseSize = 3, color = 0xffffff) {
     this.index = index;
     this.position = position.clone();
 
