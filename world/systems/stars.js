@@ -105,7 +105,7 @@ class StoryStar {
 
     // Colors
     this.baseColor = new THREE.Color(color);
-    this.highlightColor = new THREE.Color(0x88ccff); // Blau suau
+    this.highlightColor = new THREE.Color(#f6f9c7); // Blau suau
 
     this.currentScale = baseSize;
     this.targetScale = baseSize;
