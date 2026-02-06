@@ -135,3 +135,23 @@ renderer.render(scene, camera);
 
 // Start animation loop
 animate();
+
+
+// DEBUG STAR
+const testGeo = new THREE.BufferGeometry();
+testGeo.setAttribute(
+  "position",
+  new THREE.Float32BufferAttribute([0, 0, 0], 3)
+);
+
+const testMat = new THREE.PointsMaterial({
+  color: 0xff0000,
+  size: 20,
+  depthTest: false
+});
+
+const testStar = new THREE.Points(testGeo, testMat);
+testStar.position.set(0, 0, -200);
+
+scene.add(testStar);
+
