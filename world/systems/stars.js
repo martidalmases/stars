@@ -30,7 +30,7 @@ export class BackgroundStars {
   constructor({
     count = 4000,
     radius = 1000,
-    size = 40,
+    size = 100,
     color = 0xffffff
   } = {}) {
     this.count = count;
@@ -95,7 +95,7 @@ export const STORY_STATE = {
 };
 
 class StoryStar {
-  constructor(index, position, baseSize = 2, color = 0xffffff) {
+  constructor(index, position, baseSize = 20, color = 0xffffff) {
     this.index = index;
     this.position = position.clone();
 
@@ -115,7 +115,7 @@ class StoryStar {
   }
 
   create() {
-    const geo = new THREE.SphereGeometry(0.5, 16, 16);
+    const geo = new THREE.SphereGeometry(20, 16, 16);
 
     this.material = new THREE.MeshBasicMaterial({
       color: this.baseColor.clone(),
