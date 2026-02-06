@@ -63,7 +63,7 @@ export class BackgroundStars {
     this.material = new THREE.PointsMaterial({
       color: this.color,
       size: this.size,
-      transparent: true,
+      transparent: false,
       opacity: 0.9,
       depthWrite: false
     });
