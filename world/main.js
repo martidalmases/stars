@@ -21,14 +21,14 @@ document.body.appendChild(renderer.domElement);
 // ==============================
 
 document.body.addEventListener("click", () => {
-  document.body.requestPointerLock();
+  if (document.pointerLockElement !== document.body) {
+    document.body.requestPointerLock();
+  }
 });
 
-document.addEventListener("pointerlockchange", () => {
-  if (document.pointerLockElement === document.body) {
-    console.log("Pointer locked");
-  } else {
-    console.log("Pointer unlocked");
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    document.exitPointerLock();
   }
 });
 
