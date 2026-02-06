@@ -16,6 +16,9 @@ const camera = createCamera();
 const renderer = createRenderer();
 document.body.appendChild(renderer.domElement);
 
+window.scene = scene;
+window.camera = camera;
+
 // ==============================
 // Pointer Lock (Robust Linux/Chrome)
 // ==============================
