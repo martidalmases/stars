@@ -82,12 +82,7 @@ const mat = new THREE.ShaderMaterial({
       vec3 dir = normalize(vWorldPosition);
       float h = dir.y * 0.5 + 0.5;
 
-      float base = clamp(
-        pow(max(h, 0.0), exponent),
-        0.0,
-        1.0
-      );
-
+      float base = pow(h, exponent);
 
       vec3 color = mix(bottomColor, topColor, base);
 
