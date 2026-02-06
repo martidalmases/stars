@@ -30,7 +30,7 @@ export class BackgroundStars {
   constructor({
     count = 4000,
     radius = 1000,
-    size = 100,
+    size = 1,
     color = 0xffffff
   } = {}) {
     this.count = count;
@@ -95,7 +95,7 @@ export const STORY_STATE = {
 };
 
 class StoryStar {
-  constructor(index, position, baseSize = 3, color = 0xffffff) {
+  constructor(index, position, baseSize = 0.5, color = 0xffffff) {
     this.index = index;
     this.position = position.clone();
 
