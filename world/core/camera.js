@@ -18,34 +18,40 @@ return camera;
 
 
 export function createDreamyController(camera) {
-let target = new THREE.Vector2();
-let current = new THREE.Vector2();
+  let yaw = 0;
+  let pitch = 0;
 
+  let targetYaw = 0;
+  let targetPitch = 0;
 
-const sensitivity = 0.0004;
-const smoothness = 0.05;
+  const sensitivity = 0.002;
+  const smoothness = 0.08;
 
+  const maxPitch = Math.PI / 2 - 0.05;
 
-window.addEventListener("mousemove", (e) => {
-target.x += e.movementY * sensitivity;
-target.y += e.movementX * sensitivity;
-});
+  window.addEventListener("mousemove", (e) => {
+    if (document.pointerLockElement !== document.body) return;
 
+    targetYaw   -= e.movementX * sensitivity;
+    targetPitch -= e.movementY * sensitivity;
 
-return function updateCamera() {
-current.lerp(target, smoothness);
+    // Clamp vertical
+    targetPitch = Math.max(
+      -maxPitch,
+      Math.min(maxPitch, targetPitch)
+    );
+  });
 
+  return function updateCamera() {
+    // Smooth interpolation
+    yaw   += (targetYaw - yaw) * smoothness;
+    pitch += (targetPitch - pitch) * smoothness;
 
-// Clamp vertical look (no flip)
-const maxPitch = Math.PI / 2 - 0.1;
+    // Apply rotation (FPS style)
+    camera.rotation.order = "YXZ";
+    camera.rotation.y = yaw;
+    camera.rotation.x = pitch;
+    camera.rotation.z = 0;
+  };
+}
 
-current.x = Math.max(
-  -maxPitch,
-  Math.min(maxPitch, current.x)
-);
-
-camera.rotation.order = "YXZ"; // Important
-camera.rotation.x = current.x;
-camera.rotation.y = current.y;
-camera.rotation.z = 0; // Lock roll
-};
