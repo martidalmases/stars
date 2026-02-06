@@ -29,7 +29,7 @@ export class BackgroundStars {
   constructor({
     count = 4000,
     radius = 1000,
-    size = 1.5,
+    size = 3,
     color = 0xffffff
   } = {}) {
     this.count = count;
@@ -65,6 +65,7 @@ export class BackgroundStars {
       transparent: true,
       opacity: 0.9,
       depthWrite: false
+      sizeAttenuation: false,
     });
 
     this.points = new THREE.Points(geometry, this.material);
