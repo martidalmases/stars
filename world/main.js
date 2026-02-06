@@ -54,7 +54,8 @@ const updateCamera = createDreamyController(camera);
 // Sky
 // ==============================
 
-scene.add(createSkySphere());
+const sky = createSkySphere();
+scene.add(sky);
 
 // ==============================
 // Background Stars
@@ -121,6 +122,10 @@ last = t;
 updateCamera();
 bgStars.update(delta);
 storyStars.update();
+
+if (sky.userData.update) {
+  sky.userData.update(delta);
+}
 
 renderer.render(scene, camera);
 }
