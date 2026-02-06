@@ -76,9 +76,14 @@ const mat = new THREE.ShaderMaterial({
     void main() {
 
       // Sky gradient
-      float h = normalize(vWorldPosition + offset).y;
+      float h = normalize(vWorldPosition + vec3(0.0, offset, 0.0)).y;
 
-      float base = max(pow(max(h, 0.0), exponent), 0.0);
+      float base = clamp(
+        pow(max(h, 0.0), exponent),
+        0.0,
+        1.0
+      );
+
 
       vec3 color = mix(bottomColor, topColor, base);
 
@@ -120,4 +125,4 @@ sky.userData.update = (delta) => {
 };
 
 return sky;
-
+}
