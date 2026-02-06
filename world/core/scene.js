@@ -18,8 +18,8 @@ side: THREE.BackSide,
 
 
 uniforms: {
-topColor: { value: new THREE.Color(0x020111) },
-bottomColor: { value: new THREE.Color(0x0a1a2f) },
+topColor: { value: new THREE.Color(0x330066) },
+bottomColor: { value: new THREE.Color(0x001133) },
 offset: { value: 33 },
 exponent: { value: 0.6 }
 },
