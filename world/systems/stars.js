@@ -7,7 +7,6 @@ import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 // Utils
 // ==============================
 
-// Funció random coords sphere
 function randomOnSphere(radius) {
   const u = Math.random();
   const v = Math.random();
@@ -30,7 +29,7 @@ export class BackgroundStars {
   constructor({
     count = 4000,
     radius = 1000,
-    size = 1,
+    size = 1.5,
     color = 0xffffff
   } = {}) {
     this.count = count;
@@ -63,7 +62,7 @@ export class BackgroundStars {
     this.material = new THREE.PointsMaterial({
       color: this.color,
       size: this.size,
-      transparent: false,
+      transparent: true,
       opacity: 0.9,
       depthWrite: false
     });
@@ -73,13 +72,13 @@ export class BackgroundStars {
     return this.points;
   }
 
-  // Efecte pulsació
   update(delta = 0.016) {
     if (!this.material) return;
 
     this.time += delta;
 
     const pulse = 0.85 + Math.sin(this.time * 0.8) * 0.1;
+
     this.material.opacity = pulse;
   }
 }
@@ -95,36 +94,45 @@ export const STORY_STATE = {
 };
 
 class StoryStar {
-  constructor(index, position, baseSize = 0.5, color = 0xffffff) {
+  constructor(index, position) {
     this.index = index;
     this.position = position.clone();
 
     this.state = STORY_STATE.STANDBY;
 
-    this.baseSize = baseSize;
+    // Sizes
+    this.baseSize = 1.5; // same as background
+    this.currentSize = this.baseSize;
+    this.targetSize = this.baseSize;
 
     // Colors
-    this.baseColor = new THREE.Color(color);
-    this.highlightColor = new THREE.Color(0xf6f9c7); 
-
-    this.currentScale = baseSize;
-    this.targetScale = baseSize;
+    this.baseColor = new THREE.Color(0xffffff);
+    this.highlightColor = new THREE.Color(0xFFE9A3);
+    this.clickedColor = new THREE.Color(0xFFD27D);
 
     this.material = null;
     this.mesh = null;
   }
 
   create() {
-    const geo = new THREE.SphereGeometry(20, 16, 16);
+    const geo = new THREE.BufferGeometry();
 
-    this.material = new THREE.MeshBasicMaterial({
+    geo.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute([0, 0, 0], 3)
+    );
+
+    this.material = new THREE.PointsMaterial({
       color: this.baseColor.clone(),
-      transparent: true
+      size: this.baseSize,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false
     });
 
-    this.mesh = new THREE.Mesh(geo, this.material);
+    this.mesh = new THREE.Points(geo, this.material);
+
     this.mesh.position.copy(this.position);
-    this.mesh.scale.setScalar(this.baseSize);
     this.mesh.userData.storyIndex = this.index;
 
     return this.mesh;
@@ -135,47 +143,52 @@ class StoryStar {
 
     switch (state) {
       case STORY_STATE.STANDBY:
+
+        this.targetSize = this.baseSize;
         this.material.opacity = 0.9;
-        this.targetScale = this.baseSize;
         this.material.color.copy(this.baseColor);
+
         break;
 
       case STORY_STATE.SELECTED:
+
+        this.targetSize = this.baseSize * 2.2;
         this.material.opacity = 1.0;
-        this.targetScale = this.baseSize * 1.2;
+
         break;
 
       case STORY_STATE.CLICKED:
+
+        this.targetSize = this.baseSize * 1.6;
         this.material.opacity = 0.95;
-        this.targetScale = this.baseSize * 1.05;
-        this.material.color.copy(this.highlightColor);
+        this.material.color.copy(this.clickedColor);
+
         break;
     }
   }
 
-  // Quan està dins del con
   onLookAt(strength = 0) {
     if (this.state !== STORY_STATE.SELECTED) return;
 
-    // Target scale
-    this.targetScale = this.baseSize * (1.2 + strength * 0.3);
+    this.targetSize =
+      this.baseSize * (2.2 + strength * 0.6);
 
-    // Target color
     this.material.color.lerp(this.highlightColor, 0.1);
   }
 
-  // Suavitzar transicions
   update() {
-    // Scale smooth
-    this.currentScale = THREE.MathUtils.lerp(
-      this.currentScale,
-      this.targetScale,
+
+    // Smooth size
+    this.currentSize = THREE.MathUtils.lerp(
+      this.currentSize,
+      this.targetSize,
       0.1
     );
 
-    this.mesh.scale.setScalar(this.currentScale);
+    this.material.size = this.currentSize;
 
-    // Color smooth back to base
+
+    // Smooth color reset
     if (this.state === STORY_STATE.SELECTED) {
       this.material.color.lerp(this.baseColor, 0.02);
     }
@@ -191,7 +204,7 @@ export class StoryStarSystem {
     camera,
     scene,
     radius = 1000,
-    coordinates = [], // direccions Vector3
+    coordinates = [],
     onStarClick = () => {}
   }) {
     this.camera = camera;
@@ -202,7 +215,6 @@ export class StoryStarSystem {
 
     this.stars = [];
 
-    // Angle del con (15º)
     this.coneAngle = THREE.MathUtils.degToRad(15);
 
     this.lines = [];
@@ -219,11 +231,16 @@ export class StoryStarSystem {
 
   _createStars() {
     this.coordinates.forEach((dir, i) => {
-      const pos = dir.clone().normalize().multiplyScalar(this.radius);
+
+      const pos = dir
+        .clone()
+        .normalize()
+        .multiplyScalar(this.radius);
 
       const star = new StoryStar(i, pos);
 
       const mesh = star.create();
+
       this.scene.add(mesh);
 
       this.stars.push(star);
@@ -246,6 +263,7 @@ export class StoryStarSystem {
     let bestAngle = this.coneAngle;
 
     this.stars.forEach((star) => {
+
       const toStar = star.position
         .clone()
         .sub(this.camera.position)
@@ -263,28 +281,30 @@ export class StoryStarSystem {
   }
 
   _handleClick() {
+
     const star = this._getStarInCone();
 
     if (!star) return;
-
     if (star.state !== STORY_STATE.SELECTED) return;
 
-    // Callback extern
+
     this.onStarClick(star.index, star);
 
-    // Marcar com clicked
     star.setState(STORY_STATE.CLICKED);
 
-    // Activar següent
+
     const next = this.stars[star.index + 1];
+
     if (next) next.setState(STORY_STATE.SELECTED);
 
-    // Dibuixar constel·lació
+
     this._tryDrawLine();
   }
 
   _tryDrawLine() {
+
     for (let i = 0; i < this.stars.length - 1; i++) {
+
       const a = this.stars[i];
       const b = this.stars[i + 1];
 
@@ -292,11 +312,14 @@ export class StoryStarSystem {
         a.state === STORY_STATE.CLICKED &&
         b.state === STORY_STATE.CLICKED
       ) {
+
         if (this.lines[i]) continue;
+
 
         const points = [a.position, b.position];
 
-        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const geo =
+          new THREE.BufferGeometry().setFromPoints(points);
 
         const mat = new THREE.LineBasicMaterial({
           color: 0xffffff,
@@ -305,6 +328,7 @@ export class StoryStarSystem {
         });
 
         const line = new THREE.Line(geo, mat);
+
         this.scene.add(line);
 
         this.lines[i] = line;
@@ -313,10 +337,15 @@ export class StoryStarSystem {
   }
 
   update() {
+
     const active = this._getStarInCone();
 
     this.stars.forEach((star) => {
-      if (star === active && star.state === STORY_STATE.SELECTED) {
+
+      if (
+        star === active &&
+        star.state === STORY_STATE.SELECTED
+      ) {
         star.onLookAt(1);
       }
 
