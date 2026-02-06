@@ -6,9 +6,33 @@
   <link rel="icon" type="image/png" href="star.png">
   <style>
     body { margin: 0; overflow: hidden; }
+    #esc-hint {
+      position: fixed;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      display: none;
+
+      font-family: monospace;
+      font-size: 14px;
+      letter-spacing: 2px;
+
+      color: rgba(255,255,255,0.6);
+
+      pointer-events: none;
+
+      animation: pulse 2s infinite;
+    }
+
+  @keyframes pulse {
+    0%   { opacity: 0.3; }
+    50%  { opacity: 0.8; }
+    100% { opacity: 0.3; }
+  }
   </style>
 </head>
 <body>
   <script type="module" src="main.js"></script>
+  <div id="esc-hint">ESC to exit</div>
 </body>
 </html>
