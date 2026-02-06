@@ -36,7 +36,16 @@ return function updateCamera() {
 current.lerp(target, smoothness);
 
 
+// Clamp vertical look (no flip)
+const maxPitch = Math.PI / 2 - 0.1;
+
+current.x = Math.max(
+  -maxPitch,
+  Math.min(maxPitch, current.x)
+);
+
+camera.rotation.order = "YXZ"; // Important
 camera.rotation.x = current.x;
 camera.rotation.y = current.y;
+camera.rotation.z = 0; // Lock roll
 };
-}
