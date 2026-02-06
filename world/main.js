@@ -17,19 +17,21 @@ const renderer = createRenderer();
 document.body.appendChild(renderer.domElement);
 
 // ==============================
-// Pointer Lock
+// Pointer Lock (Robust Linux/Chrome)
 // ==============================
 
+let isLocked = false;
+
 document.body.addEventListener("click", () => {
-  if (document.pointerLockElement !== document.body) {
+  if (!isLocked) {
     document.body.requestPointerLock();
   }
 });
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    document.exitPointerLock();
-  }
+document.addEventListener("pointerlockchange", () => {
+  isLocked = document.pointerLockElement === document.body;
+
+  console.log("Pointer lock:", isLocked ? "ON" : "OFF");
 });
 
 const hint = document.getElementById("esc-hint");
