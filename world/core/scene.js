@@ -15,7 +15,10 @@ const geo = new THREE.SphereGeometry(1010, 64, 64);
 
 const mat = new THREE.ShaderMaterial({
   side: THREE.BackSide,
+
   depthWrite: false,
+  depthTest: false,   // <<< IMPORTANT
+
 
   uniforms: {
     topColor:    { value: new THREE.Color(0x02030a) },
