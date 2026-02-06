@@ -65,7 +65,6 @@ export class BackgroundStars {
       transparent: true,
       opacity: 0.9,
       depthWrite: false
-      sizeAttenuation: false,
     });
 
     this.points = new THREE.Points(geometry, this.material);
