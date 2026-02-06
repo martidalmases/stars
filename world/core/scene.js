@@ -21,8 +21,8 @@ const mat = new THREE.ShaderMaterial({
 
 
   uniforms: {
-    topColor:    { value: new THREE.Color(0x02030a) },
-    bottomColor: { value: new THREE.Color(0x101a2a) },
+    topColor:    { value: new THREE.Color(0x3bf4a4) },
+    bottomColor: { value: new THREE.Color(0xf43b4d) },
 
     offset:   { value: 20 },
     exponent: { value: 0.7 },
