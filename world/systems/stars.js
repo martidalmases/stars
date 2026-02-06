@@ -64,7 +64,8 @@ export class BackgroundStars {
       size: this.size,
       transparent: true,
       opacity: 0.9,
-      depthWrite: false
+      depthWrite: false,
+      depthTest: false
     });
 
     this.points = new THREE.Points(geometry, this.material);
@@ -127,7 +128,8 @@ class StoryStar {
       size: this.baseSize,
       transparent: true,
       opacity: 0.9,
-      depthWrite: false
+      depthWrite: false,
+      depthTest: false
     });
 
     this.mesh = new THREE.Points(geo, this.material);
