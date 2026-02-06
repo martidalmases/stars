@@ -17,6 +17,32 @@ const renderer = createRenderer();
 document.body.appendChild(renderer.domElement);
 
 // ==============================
+// Pointer Lock
+// ==============================
+
+document.body.addEventListener("click", () => {
+  document.body.requestPointerLock();
+});
+
+document.addEventListener("pointerlockchange", () => {
+  if (document.pointerLockElement === document.body) {
+    console.log("Pointer locked");
+  } else {
+    console.log("Pointer unlocked");
+  }
+});
+
+const hint = document.getElementById("esc-hint");
+
+document.addEventListener("pointerlockchange", () => {
+  if (document.pointerLockElement === document.body) {
+    hint.style.display = "block";
+  } else {
+    hint.style.display = "none";
+  }
+});
+
+// ==============================
 // Camera Controller
 // ==============================
 
