@@ -6,6 +6,7 @@ import { createRenderer } from "./core/renderer.js";
 
 import { BackgroundStars, StoryStarSystem } from "./systems/stars.js";
 
+console.log("Imported all correctly");
 // ==============================
 // Setup
 // ==============================
@@ -34,7 +35,7 @@ scene.add(createSkySphere());
 const bgStars = new BackgroundStars({
 count: 5000,
 radius: 1000,
-size: 10
+size: 1.5
 });
 scene.add(bgStars.create());
 
