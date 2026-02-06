@@ -41,7 +41,7 @@ export class BackgroundStars {
     this.material = null;
     this.time = 0;
   }
-console.log("this is the new size")
+
   create() {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(this.count * 3);
