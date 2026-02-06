@@ -16,6 +16,7 @@ const geo = new THREE.SphereGeometry(1010, 64, 64);
 const mat = new THREE.ShaderMaterial({
   side: THREE.BackSide,
 
+  transparent: false,
   depthWrite: false,
   depthTest: false,   // <<< IMPORTANT
 
