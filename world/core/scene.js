@@ -15,13 +15,13 @@ const geo = new THREE.SphereGeometry(1010, 64, 64);
 
 const mat = new THREE.ShaderMaterial({
 side: THREE.BackSide,
-
+depthWrite: false,
 
 uniforms: {
-topColor: { value: new THREE.Color(0xfffffff) },
-bottomColor: { value: new THREE.Color(0x0000100) },
-offset: { value: 33 },
-exponent: { value: 0.6 }
+  topColor:    { value: new THREE.Color(0x02030a) }, // near-black blue
+  bottomColor: { value: new THREE.Color(0x101a2a) }, // hazy navy
+  offset: { value: 20 },
+  exponent: { value: 0.7 }
 },
 
 
