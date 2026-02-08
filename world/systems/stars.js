@@ -21,6 +21,38 @@ function randomOnSphere(radius) {
   );
 }
 
+function createStarTexture() {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2
+  );
+
+  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+  gradient.addColorStop(0.2, "rgba(255, 255, 255, 0.9)");
+  gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.4)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+
+  return texture;
+}
+
 // ==============================
 // Background Stars
 // ==============================
@@ -40,11 +72,13 @@ export class BackgroundStars {
     this.points = null;
     this.material = null;
     this.time = 0;
+    this.texture = createStarTexture();
   }
 
   create() {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(this.count * 3);
+    const sizes = new Float32Array(this.count);
 
     for (let i = 0; i < this.count; i++) {
       const v = randomOnSphere(this.radius);
@@ -52,20 +86,52 @@ export class BackgroundStars {
       positions[i * 3] = v.x;
       positions[i * 3 + 1] = v.y;
       positions[i * 3 + 2] = v.z;
+      sizes[i] = this.size * (0.85 + Math.random() * 0.3);
     }
 
     geometry.setAttribute(
       "position",
       new THREE.BufferAttribute(positions, 3)
     );
+    geometry.setAttribute(
+      "size",
+      new THREE.BufferAttribute(sizes, 1)
+    );
 
-    this.material = new THREE.PointsMaterial({
-      color: this.color,
-      size: this.size,
-      transparent: false,
-      opacity: 0.9,
+    this.material = new THREE.ShaderMaterial({
+      uniforms: {
+        color: { value: new THREE.Color(this.color) },
+        map: { value: this.texture },
+        opacity: { value: 0.9 }
+      },
+      vertexShader: `
+        attribute float size;
+        varying float vOpacity;
+
+        void main() {
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+          vOpacity = 1.0;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 color;
+        uniform sampler2D map;
+        uniform float opacity;
+        varying float vOpacity;
+
+        void main() {
+          vec4 tex = texture2D(map, gl_PointCoord);
+          vec4 outColor = vec4(color, opacity * vOpacity) * tex;
+          if (outColor.a <= 0.0) discard;
+          gl_FragColor = outColor;
+        }
+      `,
+      transparent: true,
       depthWrite: false,
-      depthTest: false
+      depthTest: false,
+      blending: THREE.AdditiveBlending
     });
 
     this.points = new THREE.Points(geometry, this.material);
@@ -80,7 +146,7 @@ export class BackgroundStars {
 
     const pulse = 0.85 + Math.sin(this.time * 0.8) * 0.1;
 
-    this.material.opacity = pulse;
+    this.material.uniforms.opacity.value = pulse;
   }
 }
 
@@ -113,6 +179,7 @@ class StoryStar {
 
     this.material = null;
     this.mesh = null;
+    this.texture = createStarTexture();
   }
 
   create() {
@@ -126,10 +193,12 @@ class StoryStar {
     this.material = new THREE.PointsMaterial({
       color: this.baseColor.clone(),
       size: this.baseSize,
-      transparent: false,
+      transparent: true,
       opacity: 0.9,
       depthWrite: false,
-      depthTest: false
+      depthTest: false,
+      map: this.texture,
+      blending: THREE.AdditiveBlending
     });
 
     this.mesh = new THREE.Points(geo, this.material);
