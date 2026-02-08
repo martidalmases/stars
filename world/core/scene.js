@@ -119,6 +119,8 @@ const mat = new THREE.ShaderMaterial({
 
 
 const sky = new THREE.Mesh(geo, mat);
+sky.frustumCulled = false;
+sky.renderOrder = -1;
 
 sky.userData.update = (delta) => {
   mat.uniforms.time.value += delta;

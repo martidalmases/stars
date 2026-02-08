@@ -21,6 +21,38 @@ function randomOnSphere(radius) {
   );
 }
 
+function createStarTexture() {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2
+  );
+
+  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+  gradient.addColorStop(0.2, "rgba(255, 255, 255, 0.9)");
+  gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.4)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+
+  return texture;
+}
+
 // ==============================
 // Background Stars
 // ==============================
@@ -37,50 +69,75 @@ export class BackgroundStars {
     this.size = size;
     this.color = color;
 
-    this.points = null;
-    this.material = null;
+    this.points = [];
+    this.materials = [];
     this.time = 0;
+    this.texture = createStarTexture();
   }
 
   create() {
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(this.count * 3);
+    const group = new THREE.Group();
+    const buckets = [
+      { size: this.size * 0.9, count: Math.floor(this.count * 0.35) },
+      { size: this.size, count: Math.floor(this.count * 0.4) },
+      { size: this.size * 1.1, count: this.count }
+    ];
 
-    for (let i = 0; i < this.count; i++) {
-      const v = randomOnSphere(this.radius);
+    let created = 0;
 
-      positions[i * 3] = v.x;
-      positions[i * 3 + 1] = v.y;
-      positions[i * 3 + 2] = v.z;
-    }
+    buckets.forEach((bucket, index) => {
+      const count = index === buckets.length - 1
+        ? this.count - created
+        : bucket.count;
 
-    geometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(positions, 3)
-    );
+      created += count;
 
-    this.material = new THREE.PointsMaterial({
-      color: this.color,
-      size: this.size,
-      transparent: false,
-      opacity: 0.9,
-      depthWrite: false,
-      depthTest: false
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+
+      for (let i = 0; i < count; i++) {
+        const v = randomOnSphere(this.radius);
+
+        positions[i * 3] = v.x;
+        positions[i * 3 + 1] = v.y;
+        positions[i * 3 + 2] = v.z;
+      }
+
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3)
+      );
+
+      const material = new THREE.PointsMaterial({
+        color: this.color,
+        size: bucket.size,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        depthTest: false,
+        map: this.texture,
+        blending: THREE.AdditiveBlending
+      });
+
+      const points = new THREE.Points(geometry, material);
+      group.add(points);
+      this.points.push(points);
+      this.materials.push(material);
     });
 
-    this.points = new THREE.Points(geometry, this.material);
-
-    return this.points;
+    return group;
   }
 
   update(delta = 0.016) {
-    if (!this.material) return;
+    if (!this.materials.length) return;
 
     this.time += delta;
 
     const pulse = 0.85 + Math.sin(this.time * 0.8) * 0.1;
 
-    this.material.opacity = pulse;
+    this.materials.forEach((material) => {
+      material.opacity = pulse;
+    });
   }
 }
 
@@ -113,6 +170,7 @@ class StoryStar {
 
     this.material = null;
     this.mesh = null;
+    this.texture = createStarTexture();
   }
 
   create() {
@@ -126,10 +184,12 @@ class StoryStar {
     this.material = new THREE.PointsMaterial({
       color: this.baseColor.clone(),
       size: this.baseSize,
-      transparent: false,
+      transparent: true,
       opacity: 0.9,
       depthWrite: false,
-      depthTest: false
+      depthTest: false,
+      map: this.texture,
+      blending: THREE.AdditiveBlending
     });
 
     this.mesh = new THREE.Points(geo, this.material);
