@@ -110,7 +110,8 @@ export class BackgroundStars {
 
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);
+          float depth = max(1.0, abs(mvPosition.z));
+          gl_PointSize = size * (300.0 / depth);
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
         }
