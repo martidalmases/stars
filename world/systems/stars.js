@@ -64,6 +64,7 @@ export class BackgroundStars {
       "size",
       new THREE.BufferAttribute(sizes, 1)
     );
+    geometry.computeBoundingSphere();
 
     this.material = new THREE.ShaderMaterial({
       uniforms: {
@@ -113,6 +114,8 @@ export class BackgroundStars {
     });
 
     this.points = new THREE.Points(geometry, this.material);
+    this.points.frustumCulled = false;
+    this.points.renderOrder = 1;
 
     return this.points;
   }
