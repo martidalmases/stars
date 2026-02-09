@@ -168,7 +168,7 @@ class StoryStar {
     this.state = STORY_STATE.STANDBY;
 
     // Sizes
-    this.baseSize = 3; // same as background
+    this.baseSize = 6; // same as background
     this.currentSize = this.baseSize;
     this.targetSize = this.baseSize;
 
