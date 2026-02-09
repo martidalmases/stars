@@ -21,39 +21,6 @@ function randomOnSphere(radius) {
   );
 }
 
-function createStarTexture() {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, size, size);
-  const gradient = ctx.createRadialGradient(
-    size / 2,
-    size / 2,
-    0,
-    size / 2,
-    size / 2,
-    size / 2
-  );
-
-  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
-  gradient.addColorStop(0.2, "rgba(255, 255, 255, 0.9)");
-  gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.4)");
-  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = false;
-
-  return texture;
-}
-
 // ==============================
 // Background Stars
 // ==============================
@@ -73,7 +40,6 @@ export class BackgroundStars {
     this.points = null;
     this.material = null;
     this.time = 0;
-    this.texture = createStarTexture();
   }
 
   create() {
@@ -102,8 +68,7 @@ export class BackgroundStars {
     this.material = new THREE.ShaderMaterial({
       uniforms: {
         color: { value: new THREE.Color(this.color) },
-        map: { value: this.texture },
-        opacity: { value: 0.9 }
+        opacity: { value: 1.0 }
       },
       vertexShader: `
         attribute float size;
@@ -113,7 +78,7 @@ export class BackgroundStars {
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float depth = max(1.0, abs(mvPosition.z));
-          gl_PointSize = size * (300.0 / depth);
+          gl_PointSize = max(2.0, size * (300.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
           vSize = size;
@@ -135,7 +100,7 @@ export class BackgroundStars {
           float cross = (1.0 - abs(uv.x)) * (1.0 - abs(uv.y));
           float glare = pow(max(cross, 0.0), 3.0) * glareStrength;
 
-          float alpha = (core * 0.9 + halo * 0.35 + glare * 0.6) * opacity * vOpacity;
+          float alpha = (core * 0.9 + halo * 0.45 + glare * 0.6) * opacity * vOpacity;
           if (alpha <= 0.0) discard;
 
           gl_FragColor = vec4(color, alpha);
@@ -157,7 +122,7 @@ export class BackgroundStars {
 
     this.time += delta;
 
-    const pulse = 0.85 + Math.sin(this.time * 0.8) * 0.1;
+    const pulse = 0.9 + Math.sin(this.time * 0.8) * 0.1;
 
     this.material.uniforms.opacity.value = pulse;
   }
@@ -192,7 +157,6 @@ class StoryStar {
 
     this.material = null;
     this.mesh = null;
-    this.texture = createStarTexture();
   }
 
   create() {
@@ -206,7 +170,7 @@ class StoryStar {
     this.material = new THREE.ShaderMaterial({
       uniforms: {
         color: { value: this.baseColor.clone() },
-        opacity: { value: 0.9 },
+        opacity: { value: 1.0 },
         size: { value: this.baseSize }
       },
       vertexShader: `
@@ -217,7 +181,7 @@ class StoryStar {
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float depth = max(1.0, abs(mvPosition.z));
-          gl_PointSize = size * (300.0 / depth);
+          gl_PointSize = max(2.0, size * (300.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
           vSize = size;
@@ -239,7 +203,7 @@ class StoryStar {
           float cross = (1.0 - abs(uv.x)) * (1.0 - abs(uv.y));
           float glare = pow(max(cross, 0.0), 3.0) * glareStrength;
 
-          float alpha = (core * 0.9 + halo * 0.35 + glare * 0.6) * opacity * vOpacity;
+          float alpha = (core * 0.9 + halo * 0.45 + glare * 0.6) * opacity * vOpacity;
           if (alpha <= 0.0) discard;
 
           gl_FragColor = vec4(color, alpha);
