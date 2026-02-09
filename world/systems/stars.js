@@ -28,6 +28,7 @@ function createStarTexture() {
   canvas.height = size;
 
   const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, size, size);
   const gradient = ctx.createRadialGradient(
     size / 2,
     size / 2,
@@ -107,25 +108,37 @@ export class BackgroundStars {
       vertexShader: `
         attribute float size;
         varying float vOpacity;
+        varying float vSize;
 
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);
+          float depth = max(1.0, abs(mvPosition.z));
+          gl_PointSize = size * (300.0 / depth);
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
+          vSize = size;
         }
       `,
       fragmentShader: `
         uniform vec3 color;
-        uniform sampler2D map;
         uniform float opacity;
         varying float vOpacity;
+        varying float vSize;
 
         void main() {
-          vec4 tex = texture2D(map, gl_PointCoord);
-          vec4 outColor = vec4(color, opacity * vOpacity) * tex;
-          if (outColor.a <= 0.0) discard;
-          gl_FragColor = outColor;
+          vec2 uv = gl_PointCoord * 2.0 - 1.0;
+          float radius = length(uv);
+
+          float core = smoothstep(0.35, 0.0, radius);
+          float halo = smoothstep(1.0, 0.0, radius);
+          float glareStrength = clamp(vSize / 10.0, 0.25, 1.0);
+          float cross = (1.0 - abs(uv.x)) * (1.0 - abs(uv.y));
+          float glare = pow(max(cross, 0.0), 3.0) * glareStrength;
+
+          float alpha = (core * 0.9 + halo * 0.35 + glare * 0.6) * opacity * vOpacity;
+          if (alpha <= 0.0) discard;
+
+          gl_FragColor = vec4(color, alpha);
         }
       `,
       transparent: true,
@@ -168,7 +181,7 @@ class StoryStar {
     this.state = STORY_STATE.STANDBY;
 
     // Sizes
-    this.baseSize = 3; // same as background
+    this.baseSize = 6; // same as background
     this.currentSize = this.baseSize;
     this.targetSize = this.baseSize;
 
@@ -190,14 +203,51 @@ class StoryStar {
       new THREE.Float32BufferAttribute([0, 0, 0], 3)
     );
 
-    this.material = new THREE.PointsMaterial({
-      color: this.baseColor.clone(),
-      size: this.baseSize,
+    this.material = new THREE.ShaderMaterial({
+      uniforms: {
+        color: { value: this.baseColor.clone() },
+        opacity: { value: 0.9 },
+        size: { value: this.baseSize }
+      },
+      vertexShader: `
+        uniform float size;
+        varying float vOpacity;
+        varying float vSize;
+
+        void main() {
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          float depth = max(1.0, abs(mvPosition.z));
+          gl_PointSize = size * (300.0 / depth);
+          gl_Position = projectionMatrix * mvPosition;
+          vOpacity = 1.0;
+          vSize = size;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 color;
+        uniform float opacity;
+        varying float vOpacity;
+        varying float vSize;
+
+        void main() {
+          vec2 uv = gl_PointCoord * 2.0 - 1.0;
+          float radius = length(uv);
+
+          float core = smoothstep(0.35, 0.0, radius);
+          float halo = smoothstep(1.0, 0.0, radius);
+          float glareStrength = clamp(vSize / 10.0, 0.25, 1.0);
+          float cross = (1.0 - abs(uv.x)) * (1.0 - abs(uv.y));
+          float glare = pow(max(cross, 0.0), 3.0) * glareStrength;
+
+          float alpha = (core * 0.9 + halo * 0.35 + glare * 0.6) * opacity * vOpacity;
+          if (alpha <= 0.0) discard;
+
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
       transparent: true,
-      opacity: 0.9,
       depthWrite: false,
       depthTest: false,
-      map: this.texture,
       blending: THREE.AdditiveBlending
     });
 
@@ -216,23 +266,23 @@ class StoryStar {
       case STORY_STATE.STANDBY:
 
         this.targetSize = this.baseSize;
-        this.material.opacity = 0.9;
-        this.material.color.copy(this.baseColor);
+        this.material.uniforms.opacity.value = 0.9;
+        this.material.uniforms.color.value.copy(this.baseColor);
 
         break;
 
       case STORY_STATE.SELECTED:
 
         this.targetSize = this.baseSize * 3;
-        this.material.opacity = 2;
+        this.material.uniforms.opacity.value = 1.1;
 
         break;
 
       case STORY_STATE.CLICKED:
 
         this.targetSize = this.baseSize * 1.6;
-        this.material.opacity = 0.95;
-        this.material.color.copy(this.clickedColor);
+        this.material.uniforms.opacity.value = 0.95;
+        this.material.uniforms.color.value.copy(this.clickedColor);
 
         break;
     }
@@ -244,7 +294,7 @@ class StoryStar {
     this.targetSize =
       this.baseSize * (2.2 + strength * 0.6);
 
-    this.material.color.lerp(this.highlightColor, 0.1);
+    this.material.uniforms.color.value.lerp(this.highlightColor, 0.1);
   }
 
   update() {
@@ -256,12 +306,12 @@ class StoryStar {
       0.1
     );
 
-    this.material.size = this.currentSize;
+    this.material.uniforms.size.value = this.currentSize;
 
 
     // Smooth color reset
     if (this.state === STORY_STATE.SELECTED) {
-      this.material.color.lerp(this.baseColor, 0.02);
+      this.material.uniforms.color.value.lerp(this.baseColor, 0.02);
     }
   }
 }
