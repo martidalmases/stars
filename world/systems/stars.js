@@ -21,38 +21,6 @@ function randomOnSphere(radius) {
   );
 }
 
-function createStarTexture() {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-
-  const ctx = canvas.getContext("2d");
-  const gradient = ctx.createRadialGradient(
-    size / 2,
-    size / 2,
-    0,
-    size / 2,
-    size / 2,
-    size / 2
-  );
-
-  gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
-  gradient.addColorStop(0.2, "rgba(255, 255, 255, 0.9)");
-  gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.4)");
-  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = false;
-
-  return texture;
-}
-
 // ==============================
 // Background Stars
 // ==============================
@@ -72,7 +40,6 @@ export class BackgroundStars {
     this.points = null;
     this.material = null;
     this.time = 0;
-    this.texture = createStarTexture();
   }
 
   create() {
@@ -97,35 +64,55 @@ export class BackgroundStars {
       "size",
       new THREE.BufferAttribute(sizes, 1)
     );
+    geometry.computeBoundingSphere();
 
     this.material = new THREE.ShaderMaterial({
       uniforms: {
         color: { value: new THREE.Color(this.color) },
-        map: { value: this.texture },
-        opacity: { value: 0.9 }
+        opacity: { value: 1.0 }
       },
       vertexShader: `
         attribute float size;
         varying float vOpacity;
+        varying float vSize;
+        varying float vDepth;
 
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);
+          float depth = max(1.0, abs(mvPosition.z));
+          gl_PointSize = max(2.5, size * (340.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
+          vSize = size;
+          vDepth = depth;
         }
       `,
       fragmentShader: `
         uniform vec3 color;
-        uniform sampler2D map;
         uniform float opacity;
         varying float vOpacity;
+        varying float vSize;
+        varying float vDepth;
 
         void main() {
-          vec4 tex = texture2D(map, gl_PointCoord);
-          vec4 outColor = vec4(color, opacity * vOpacity) * tex;
-          if (outColor.a <= 0.0) discard;
-          gl_FragColor = outColor;
+          vec2 uv = gl_PointCoord * 2.0 - 1.0;
+          float radius = length(uv);
+
+          if (radius > 1.0) discard;
+
+          float core = exp(-16.0 * radius * radius);
+          float halo = exp(-5.5 * radius * radius);
+          float spikeX = exp(-95.0 * uv.x * uv.x) * exp(-4.5 * uv.y * uv.y);
+          float spikeY = exp(-95.0 * uv.y * uv.y) * exp(-4.5 * uv.x * uv.x);
+          float glareStrength = clamp(vSize / 16.0, 0.08, 0.4);
+          float glare = (spikeX + spikeY) * glareStrength;
+
+          float nearBoost = mix(1.15, 0.75, clamp(vDepth / 1400.0, 0.0, 1.0));
+          float alpha = (core * 1.15 + halo * 0.6 + glare * 0.45) * opacity * vOpacity * nearBoost;
+
+          if (alpha <= 0.0) discard;
+
+          gl_FragColor = vec4(color, alpha);
         }
       `,
       transparent: true,
@@ -135,6 +122,8 @@ export class BackgroundStars {
     });
 
     this.points = new THREE.Points(geometry, this.material);
+    this.points.frustumCulled = false;
+    this.points.renderOrder = 1;
 
     return this.points;
   }
@@ -144,7 +133,7 @@ export class BackgroundStars {
 
     this.time += delta;
 
-    const pulse = 0.85 + Math.sin(this.time * 0.8) * 0.1;
+    const pulse = 0.9 + Math.sin(this.time * 0.8) * 0.1;
 
     this.material.uniforms.opacity.value = pulse;
   }
@@ -168,7 +157,7 @@ class StoryStar {
     this.state = STORY_STATE.STANDBY;
 
     // Sizes
-    this.baseSize = 3; // same as background
+    this.baseSize = 6; // same as background
     this.currentSize = this.baseSize;
     this.targetSize = this.baseSize;
 
@@ -179,7 +168,6 @@ class StoryStar {
 
     this.material = null;
     this.mesh = null;
-    this.texture = createStarTexture();
   }
 
   create() {
@@ -190,14 +178,59 @@ class StoryStar {
       new THREE.Float32BufferAttribute([0, 0, 0], 3)
     );
 
-    this.material = new THREE.PointsMaterial({
-      color: this.baseColor.clone(),
-      size: this.baseSize,
+    this.material = new THREE.ShaderMaterial({
+      uniforms: {
+        color: { value: this.baseColor.clone() },
+        opacity: { value: 1.0 },
+        size: { value: this.baseSize }
+      },
+      vertexShader: `
+        uniform float size;
+        varying float vOpacity;
+        varying float vSize;
+        varying float vDepth;
+
+        void main() {
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          float depth = max(1.0, abs(mvPosition.z));
+          gl_PointSize = max(2.5, size * (340.0 / depth));
+          gl_Position = projectionMatrix * mvPosition;
+          vOpacity = 1.0;
+          vSize = size;
+          vDepth = depth;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 color;
+        uniform float opacity;
+        varying float vOpacity;
+        varying float vSize;
+        varying float vDepth;
+
+        void main() {
+          vec2 uv = gl_PointCoord * 2.0 - 1.0;
+          float radius = length(uv);
+
+          if (radius > 1.0) discard;
+
+          float core = exp(-16.0 * radius * radius);
+          float halo = exp(-5.5 * radius * radius);
+          float spikeX = exp(-95.0 * uv.x * uv.x) * exp(-4.5 * uv.y * uv.y);
+          float spikeY = exp(-95.0 * uv.y * uv.y) * exp(-4.5 * uv.x * uv.x);
+          float glareStrength = clamp(vSize / 16.0, 0.08, 0.4);
+          float glare = (spikeX + spikeY) * glareStrength;
+
+          float nearBoost = mix(1.15, 0.75, clamp(vDepth / 1400.0, 0.0, 1.0));
+          float alpha = (core * 1.15 + halo * 0.6 + glare * 0.45) * opacity * vOpacity * nearBoost;
+
+          if (alpha <= 0.0) discard;
+
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
       transparent: true,
-      opacity: 0.9,
       depthWrite: false,
       depthTest: false,
-      map: this.texture,
       blending: THREE.AdditiveBlending
     });
 
@@ -216,23 +249,23 @@ class StoryStar {
       case STORY_STATE.STANDBY:
 
         this.targetSize = this.baseSize;
-        this.material.opacity = 0.9;
-        this.material.color.copy(this.baseColor);
+        this.material.uniforms.opacity.value = 0.9;
+        this.material.uniforms.color.value.copy(this.baseColor);
 
         break;
 
       case STORY_STATE.SELECTED:
 
         this.targetSize = this.baseSize * 3;
-        this.material.opacity = 2;
+        this.material.uniforms.opacity.value = 1.1;
 
         break;
 
       case STORY_STATE.CLICKED:
 
         this.targetSize = this.baseSize * 1.6;
-        this.material.opacity = 0.95;
-        this.material.color.copy(this.clickedColor);
+        this.material.uniforms.opacity.value = 0.95;
+        this.material.uniforms.color.value.copy(this.clickedColor);
 
         break;
     }
@@ -244,7 +277,7 @@ class StoryStar {
     this.targetSize =
       this.baseSize * (2.2 + strength * 0.6);
 
-    this.material.color.lerp(this.highlightColor, 0.1);
+    this.material.uniforms.color.value.lerp(this.highlightColor, 0.1);
   }
 
   update() {
@@ -256,12 +289,12 @@ class StoryStar {
       0.1
     );
 
-    this.material.size = this.currentSize;
+    this.material.uniforms.size.value = this.currentSize;
 
 
     // Smooth color reset
     if (this.state === STORY_STATE.SELECTED) {
-      this.material.color.lerp(this.baseColor, 0.02);
+      this.material.uniforms.color.value.lerp(this.baseColor, 0.02);
     }
   }
 }
