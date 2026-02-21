@@ -75,14 +75,16 @@ export class BackgroundStars {
         attribute float size;
         varying float vOpacity;
         varying float vSize;
+        varying float vDepth;
 
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float depth = max(1.0, abs(mvPosition.z));
-          gl_PointSize = max(2.0, size * (300.0 / depth));
+          gl_PointSize = max(2.5, size * (340.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
           vSize = size;
+          vDepth = depth;
         }
       `,
       fragmentShader: `
@@ -90,18 +92,24 @@ export class BackgroundStars {
         uniform float opacity;
         varying float vOpacity;
         varying float vSize;
+        varying float vDepth;
 
         void main() {
           vec2 uv = gl_PointCoord * 2.0 - 1.0;
           float radius = length(uv);
 
-          float core = smoothstep(0.35, 0.0, radius);
-          float halo = smoothstep(1.0, 0.0, radius);
-          float glareStrength = clamp(vSize / 10.0, 0.25, 1.0);
-          float cross = (1.0 - abs(uv.x)) * (1.0 - abs(uv.y));
-          float glare = pow(max(cross, 0.0), 3.0) * glareStrength;
+          if (radius > 1.0) discard;
 
-          float alpha = (core * 0.9 + halo * 0.45 + glare * 0.6) * opacity * vOpacity;
+          float core = exp(-16.0 * radius * radius);
+          float halo = exp(-5.5 * radius * radius);
+          float spikeX = exp(-95.0 * uv.x * uv.x) * exp(-4.5 * uv.y * uv.y);
+          float spikeY = exp(-95.0 * uv.y * uv.y) * exp(-4.5 * uv.x * uv.x);
+          float glareStrength = clamp(vSize / 16.0, 0.08, 0.4);
+          float glare = (spikeX + spikeY) * glareStrength;
+
+          float nearBoost = mix(1.15, 0.75, clamp(vDepth / 1400.0, 0.0, 1.0));
+          float alpha = (core * 1.15 + halo * 0.6 + glare * 0.45) * opacity * vOpacity * nearBoost;
+
           if (alpha <= 0.0) discard;
 
           gl_FragColor = vec4(color, alpha);
@@ -180,14 +188,16 @@ class StoryStar {
         uniform float size;
         varying float vOpacity;
         varying float vSize;
+        varying float vDepth;
 
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float depth = max(1.0, abs(mvPosition.z));
-          gl_PointSize = max(2.0, size * (300.0 / depth));
+          gl_PointSize = max(2.5, size * (340.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
           vSize = size;
+          vDepth = depth;
         }
       `,
       fragmentShader: `
@@ -195,18 +205,24 @@ class StoryStar {
         uniform float opacity;
         varying float vOpacity;
         varying float vSize;
+        varying float vDepth;
 
         void main() {
           vec2 uv = gl_PointCoord * 2.0 - 1.0;
           float radius = length(uv);
 
-          float core = smoothstep(0.35, 0.0, radius);
-          float halo = smoothstep(1.0, 0.0, radius);
-          float glareStrength = clamp(vSize / 10.0, 0.25, 1.0);
-          float cross = (1.0 - abs(uv.x)) * (1.0 - abs(uv.y));
-          float glare = pow(max(cross, 0.0), 3.0) * glareStrength;
+          if (radius > 1.0) discard;
 
-          float alpha = (core * 0.9 + halo * 0.45 + glare * 0.6) * opacity * vOpacity;
+          float core = exp(-16.0 * radius * radius);
+          float halo = exp(-5.5 * radius * radius);
+          float spikeX = exp(-95.0 * uv.x * uv.x) * exp(-4.5 * uv.y * uv.y);
+          float spikeY = exp(-95.0 * uv.y * uv.y) * exp(-4.5 * uv.x * uv.x);
+          float glareStrength = clamp(vSize / 16.0, 0.08, 0.4);
+          float glare = (spikeX + spikeY) * glareStrength;
+
+          float nearBoost = mix(1.15, 0.75, clamp(vDepth / 1400.0, 0.0, 1.0));
+          float alpha = (core * 1.15 + halo * 0.6 + glare * 0.45) * opacity * vOpacity * nearBoost;
+
           if (alpha <= 0.0) discard;
 
           gl_FragColor = vec4(color, alpha);
