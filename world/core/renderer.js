@@ -6,8 +6,8 @@ export function createRenderer() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
 
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   renderer.toneMappingExposure = 1.35;
 
   console.log("[Renderer] ACES tone mapping enabled. Exposure:", renderer.toneMappingExposure);
