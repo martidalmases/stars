@@ -19,15 +19,16 @@ return camera;
 
 export function createDreamyController(camera) {
   let yaw = 0;
-  let pitch = 0;
+  let pitch = THREE.MathUtils.degToRad(25);
 
   let targetYaw = 0;
-  let targetPitch = 0;
+  let targetPitch = THREE.MathUtils.degToRad(25);
 
   const sensitivity = 0.002;
   const smoothness = 0.08;
 
-  const maxPitch = Math.PI / 2 - 0.05;
+  const minPitch = THREE.MathUtils.degToRad(-20);
+  const maxPitch = THREE.MathUtils.degToRad(80);
   const maxYaw = Math.PI / 2; // +/- 90deg -> total 180deg scene
 
   window.addEventListener("mousemove", (e) => {
@@ -43,7 +44,7 @@ export function createDreamyController(camera) {
 
     // Clamp vertical
     targetPitch = Math.max(
-      -maxPitch,
+      minPitch,
       Math.min(maxPitch, targetPitch)
     );
   });
@@ -60,4 +61,3 @@ export function createDreamyController(camera) {
     camera.rotation.z = 0;
   };
 }
-
