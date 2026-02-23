@@ -57,8 +57,8 @@ const updateCamera = createDreamyController(camera);
 // Sky
 // ==============================
 
-const sky = createSkySphere();
-scene.add(sky);
+scene.add(createSkySphere());
+console.log("Imported sky from main");
 
 // ==============================
 // Story Stars
