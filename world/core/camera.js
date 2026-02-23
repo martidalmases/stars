@@ -5,8 +5,8 @@ export function createCamera() {
 const camera = new THREE.PerspectiveCamera(
 90,
 window.innerWidth / window.innerHeight,
-0.1,
-2000
+0.001,
+5000
 );
 
 
