@@ -65,9 +65,9 @@ scene.add(sky);
 // ==============================
 
 const bgStars = new BackgroundStars({
-count: 5000,
-radius: 1000,
-size: 16
+count: 2500,
+radius: 990,
+size: 2.4
 });
 scene.add(bgStars.create());
 
@@ -76,18 +76,18 @@ scene.add(bgStars.create());
 // ==============================
 
 const directions = [
-new THREE.Vector3(1, 0, 0),
-new THREE.Vector3(0.8, 0.2, 0.5),
-new THREE.Vector3(0.3, 0.6, 0.7),
-new THREE.Vector3(-0.2, 0.8, 0.5),
-new THREE.Vector3(-0.6, 0.4, 0.2),
-new THREE.Vector3(-0.9, 0.1, -0.2),
-new THREE.Vector3(-0.7, -0.4, -0.5),
-new THREE.Vector3(-0.3, -0.7, -0.6),
-new THREE.Vector3(0.1, -0.8, -0.5),
-new THREE.Vector3(0.4, -0.6, -0.3),
-new THREE.Vector3(0.7, -0.3, 0.1),
-new THREE.Vector3(0.9, -0.1, 0.4)
+new THREE.Vector3(-2.2, 1.55, -0.2),
+new THREE.Vector3(-1.55, 1.95, 0.25),
+new THREE.Vector3(-1.05, 1.45, -0.45),
+new THREE.Vector3(-0.45, 2.35, 0.15),
+new THREE.Vector3(0.15, 1.7, -0.35),
+new THREE.Vector3(0.7, 2.2, 0.28),
+new THREE.Vector3(1.35, 1.35, -0.25),
+new THREE.Vector3(2.1, 1.95, 0.35),
+new THREE.Vector3(1.7, 0.95, -0.15),
+new THREE.Vector3(0.95, 0.75, 0.25),
+new THREE.Vector3(0.05, 0.55, -0.2),
+new THREE.Vector3(-1.0, 0.9, 0.18)
 ];
 
 const storyStars = new StoryStarSystem({
@@ -96,7 +96,9 @@ scene,
 coordinates: directions,
 onStarClick: (index) => {
 console.log("Story star clicked:", index);
-}
+},
+clusterCenter: new THREE.Vector3(0, 260, -760),
+clusterScale: 230
 });
 storyStars.init();
 
