@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>laurins</title>
+  <link rel="icon" type="image/png" href="world/star.png">
   <style>
     * {
       box-sizing: border-box;
@@ -80,7 +81,7 @@
       padding: 10px 24px;
       cursor: pointer;
       user-select: none;
-      transition: transform 70ms ease, background 120ms ease, left 90ms ease, top 90ms ease;
+      transition: transform 70ms ease, background 120ms ease, left 60ms linear, top 60ms linear;
     }
 
     .btn:hover {
@@ -177,28 +178,28 @@
       }, 20);
     }
 
-    function moveNoButtonAggressively(event) {
+    function moveNoButtonAggressively(pointerX, pointerY) {
       const areaRect = buttonArea.getBoundingClientRect();
       const noRect = noBtn.getBoundingClientRect();
 
-      const margin = 6;
+      const margin = 4;
       const minX = margin;
       const minY = margin;
       const maxX = areaRect.width - noRect.width - margin;
       const maxY = areaRect.height - noRect.height - margin;
 
-      const clickX = event.clientX - areaRect.left;
-      const clickY = event.clientY - areaRect.top;
+      const localX = pointerX - areaRect.left;
+      const localY = pointerY - areaRect.top;
 
       let candidateX = noBtn.offsetLeft;
       let candidateY = noBtn.offsetTop;
 
-      for (let jump = 0; jump < 4; jump++) {
+      for (let jump = 0; jump < 7; jump++) {
         const randomX = Math.random() * (maxX - minX) + minX;
         const randomY = Math.random() * (maxY - minY) + minY;
 
-        const dist = Math.hypot(randomX - clickX, randomY - clickY);
-        if (dist > 95 || jump === 3) {
+        const dist = Math.hypot(randomX - localX, randomY - localY);
+        if (dist > 190 || jump === 6) {
           candidateX = randomX;
           candidateY = randomY;
           break;
@@ -209,16 +210,22 @@
       noBtn.style.top = `${candidateY}px`;
     }
 
-    function onNoAttempt(event) {
+    function pursuitNo(event) {
       if (transitioning) return;
-      event.preventDefault();
-      attemptedNo = true;
-      typeText("NICE TRY. THE NO BUTTON ISN'T REALLY AN OPTION.");
-      moveNoButtonAggressively(event);
+
+      const rect = noBtn.getBoundingClientRect();
+      const distance = Math.hypot(
+        event.clientX - (rect.left + rect.width / 2),
+        event.clientY - (rect.top + rect.height / 2)
+      );
+
+      if (distance < 140) {
+        attemptedNo = true;
+        moveNoButtonAggressively(event.clientX, event.clientY);
+      }
     }
 
-    noBtn.addEventListener("pointerdown", onNoAttempt);
-    noBtn.addEventListener("click", onNoAttempt);
+    document.addEventListener("mousemove", pursuitNo);
 
     yesBtn.addEventListener("click", async () => {
       if (transitioning) return;
@@ -232,7 +239,7 @@
       yesBtn.disabled = true;
       noBtn.disabled = true;
 
-      typeText("ACCEPTED. LOADING THE SKY...");
+      message.textContent = "";
 
       await new Promise((resolve) => setTimeout(resolve, 520));
 
