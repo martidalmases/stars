@@ -27,7 +27,7 @@ window.camera = camera;
 let isLocked = false;
 
 document.body.addEventListener("click", () => {
-  if (storyOverlay.isOpen()) return;
+  if (storyOverlay.isOpen() || hasFinishedExperience) return;
 
   if (!isLocked) {
     document.body.requestPointerLock();
@@ -41,6 +41,11 @@ document.addEventListener("pointerlockchange", () => {
 });
 
 const hint = document.getElementById("esc-hint");
+const endingOverlay = document.getElementById("ending-overlay");
+const endingTitle = document.getElementById("ending-title");
+const endingText = document.getElementById("ending-text");
+
+let hasFinishedExperience = false;
 
 document.addEventListener("pointerlockchange", () => {
   if (document.pointerLockElement === document.body) {
@@ -69,6 +74,25 @@ const storyOverlay = new StoryOverlay({
 await storyOverlay.init();
 window.storyOverlay = storyOverlay;
 
+
+function triggerEnding(star) {
+  if (hasFinishedExperience || !endingOverlay || !star) return;
+
+  hasFinishedExperience = true;
+
+  const endSlide = storyOverlay.getEndingSlide();
+  endingTitle.textContent = endSlide.title;
+  endingText.textContent = endSlide.text;
+
+  const projected = star.position.clone().project(camera);
+  const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+
+  endingOverlay.style.setProperty("--flash-x", `${x}px`);
+  endingOverlay.style.setProperty("--flash-y", `${y}px`);
+  endingOverlay.classList.add("is-active");
+}
+
 // ==============================
 // Story Stars
 // ==============================
@@ -92,14 +116,21 @@ const storyStars = new StoryStarSystem({
 camera,
 scene,
 coordinates: directions,
-onStarClick: (index) => {
+onStarClick: (index, star) => {
 console.log("Story star clicked:", index);
+
+if (hasFinishedExperience) return;
 
 if (document.pointerLockElement === document.body) {
   document.exitPointerLock();
 }
 
-storyOverlay.open(index);
+if (storyOverlay.hasSlide(index)) {
+  storyOverlay.open(index);
+  return;
+}
+
+triggerEnding(star);
 },
 clusterCenter: new THREE.Vector3(0, 260, -760),
 clusterScale: 230
