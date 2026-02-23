@@ -64,8 +64,8 @@
     .button-area {
       position: relative;
       width: 100%;
-      height: 120px;
-      margin-top: 20px;
+      height: 280px;
+      margin-top: 28px;
     }
 
     .btn {
@@ -81,7 +81,7 @@
       padding: 10px 24px;
       cursor: pointer;
       user-select: none;
-      transition: transform 70ms ease, background 120ms ease, left 60ms linear, top 60ms linear;
+      transition: transform 70ms ease, background 120ms ease, left 95ms ease, top 95ms ease;
     }
 
     .btn:hover {
@@ -95,13 +95,13 @@
 
     #yes-btn {
       left: 38%;
-      top: 40px;
+      top: 120px;
       transform: translateX(-50%);
     }
 
     #no-btn {
       left: 62%;
-      top: 40px;
+      top: 120px;
       transform: translateX(-50%);
     }
 
@@ -182,7 +182,7 @@
       const areaRect = buttonArea.getBoundingClientRect();
       const noRect = noBtn.getBoundingClientRect();
 
-      const margin = 4;
+      const margin = 10;
       const minX = margin;
       const minY = margin;
       const maxX = areaRect.width - noRect.width - margin;
@@ -194,12 +194,12 @@
       let candidateX = noBtn.offsetLeft;
       let candidateY = noBtn.offsetTop;
 
-      for (let jump = 0; jump < 7; jump++) {
+      for (let jump = 0; jump < 4; jump++) {
         const randomX = Math.random() * (maxX - minX) + minX;
         const randomY = Math.random() * (maxY - minY) + minY;
 
         const dist = Math.hypot(randomX - localX, randomY - localY);
-        if (dist > 190 || jump === 6) {
+        if (dist > 120 || jump === 3) {
           candidateX = randomX;
           candidateY = randomY;
           break;
@@ -219,7 +219,7 @@
         event.clientY - (rect.top + rect.height / 2)
       );
 
-      if (distance < 140) {
+      if (distance < 105) {
         attemptedNo = true;
         moveNoButtonAggressively(event.clientX, event.clientY);
       }
