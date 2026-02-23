@@ -113,9 +113,6 @@ export function createSkySphere() {
 
         vec3 color = sky + nebula + stars;
         gl_FragColor = vec4(color, 1.0);
-
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
       }
     `
   });
@@ -176,9 +173,6 @@ export function createSkySphere() {
 
         float alpha = clamp(horizonGlow + galaxyGlow + bloom, 0.0, 0.55);
         gl_FragColor = vec4(emissive, alpha);
-
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
       }
     `
   });
