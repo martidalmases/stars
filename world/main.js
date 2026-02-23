@@ -4,7 +4,8 @@ import { createCamera, createDreamyController } from "./core/camera.js";
 import { createScene, createSkySphere } from "./core/scene.js";
 import { createRenderer } from "./core/renderer.js";
 
-import { BackgroundStars, StoryStarSystem } from "./systems/stars.js";
+import { StoryStarSystem } from "./systems/stars.js";
+import { StoryOverlay } from "./systems/storyOverlay.js";
 
 console.log("Imported all correctly");
 // ==============================
@@ -26,6 +27,8 @@ window.camera = camera;
 let isLocked = false;
 
 document.body.addEventListener("click", () => {
+  if (storyOverlay.isOpen()) return;
+
   if (!isLocked) {
     document.body.requestPointerLock();
   }
@@ -60,16 +63,11 @@ const updateCamera = createDreamyController(camera);
 const sky = createSkySphere();
 scene.add(sky);
 
-// ==============================
-// Background Stars
-// ==============================
-
-const bgStars = new BackgroundStars({
-count: 2500,
-radius: 990,
-size: 100
+const storyOverlay = new StoryOverlay({
+  dataUrl: "./data/story-slides.json"
 });
-scene.add(bgStars.create());
+await storyOverlay.init();
+window.storyOverlay = storyOverlay;
 
 // ==============================
 // Story Stars
@@ -96,6 +94,12 @@ scene,
 coordinates: directions,
 onStarClick: (index) => {
 console.log("Story star clicked:", index);
+
+if (document.pointerLockElement === document.body) {
+  document.exitPointerLock();
+}
+
+storyOverlay.open(index);
 },
 clusterCenter: new THREE.Vector3(0, 260, -760),
 clusterScale: 230
@@ -125,7 +129,6 @@ const delta = (t - last) / 1000;
 last = t;
 
 updateCamera();
-bgStars.update(delta);
 storyStars.update();
 
 if (sky.userData.update) {

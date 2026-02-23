@@ -19,10 +19,10 @@ return camera;
 
 export function createDreamyController(camera) {
   let yaw = 0;
-  let pitch = 0;
+  let pitch = THREE.MathUtils.degToRad(25);
 
   let targetYaw = 0;
-  let targetPitch = 0;
+  let targetPitch = THREE.MathUtils.degToRad(25);
 
   const sensitivity = 0.002;
   const smoothness = 0.08;
