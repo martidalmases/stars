@@ -112,7 +112,6 @@ export function createSkySphere() {
         stars *= (1.0 - horizonBlend * 0.75);
 
         vec3 color = sky + nebula + stars;
-        color += vec3(0.02);
         gl_FragColor = vec4(color, 1.0);
       }
     `
