@@ -14,7 +14,7 @@ export function createSkySphere() {
     side: THREE.BackSide,
     transparent: false,
     depthWrite: false,
-    depthTest: false,
+    depthTest: true,
     uniforms: {
       time: { value: 0 },
       zenithColor: { value: new THREE.Color(0x02030a) },
@@ -112,6 +112,7 @@ export function createSkySphere() {
         stars *= (1.0 - horizonBlend * 0.75);
 
         vec3 color = sky + nebula + stars;
+        color += vec3(0.02);
         gl_FragColor = vec4(color, 1.0);
       }
     `
@@ -121,7 +122,7 @@ export function createSkySphere() {
     side: THREE.BackSide,
     transparent: true,
     depthWrite: false,
-    depthTest: false,
+    depthTest: true,
     blending: THREE.AdditiveBlending,
     uniforms: {
       time: { value: 0 },
