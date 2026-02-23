@@ -20,6 +20,8 @@ document.body.appendChild(renderer.domElement);
 window.scene = scene;
 window.camera = camera;
 
+console.log("SCENE IMPORTED");
+
 // ==============================
 // Pointer Lock (Robust Linux/Chrome)
 // ==============================
