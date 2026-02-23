@@ -23,9 +23,11 @@
 
 .story-overlay__card {
   position: relative;
-  width: min(700px, calc(100vw - 40px));
+  width: min(840px, calc(100vw - 40px));
   max-height: calc(100vh - 80px);
   overflow: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   color: #f3f6ff;
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.07));
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -41,18 +43,43 @@
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 180px;
 }
 
 .story-overlay__media {
   display: block;
   width: 100%;
-  height: 210px;
-  object-fit: cover;
+  height: 100%;
+  max-height: 58vh;
+  object-fit: contain;
+  object-position: center;
   filter: saturate(0.7) contrast(1.05);
 }
 
 .story-overlay__content {
   padding: 16px 18px 18px;
+}
+
+.story-overlay__card--landscape {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.story-overlay__card--landscape .story-overlay__media-wrap {
+  margin: 14px 0 14px 14px;
+  min-height: 240px;
+}
+
+.story-overlay__card--landscape .story-overlay__content {
+  padding: 16px 18px 18px 16px;
+}
+
+.story-overlay__card--portrait {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.story-overlay__card--portrait .story-overlay__media-wrap {
+  min-height: clamp(240px, 52vh, 540px);
 }
 
 .story-overlay__title {
@@ -224,4 +251,21 @@
   0%   { opacity: 0.3; }
   50%  { opacity: 0.8; }
   100% { opacity: 0.3; }
+}
+
+@media (max-width: 760px) {
+  .story-overlay__card,
+  .story-overlay__card--landscape {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .story-overlay__card--landscape .story-overlay__media-wrap,
+  .story-overlay__card--portrait .story-overlay__media-wrap {
+    margin: 14px 14px 0;
+    min-height: clamp(210px, 42vh, 360px);
+  }
+
+  .story-overlay__card--landscape .story-overlay__content {
+    padding: 16px 18px 18px;
+  }
 }

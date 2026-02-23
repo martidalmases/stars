@@ -78,6 +78,7 @@ export class StoryOverlay {
     const slide = this.slides[this.currentIndex];
     if (!slide) return;
 
+    this.card.classList.remove("story-overlay__card--portrait", "story-overlay__card--landscape");
     this.image.src = slide.image;
     this.image.alt = slide.title;
     this.title.textContent = slide.title;
@@ -85,6 +86,18 @@ export class StoryOverlay {
     this.counter.textContent = `${this.currentIndex + 1} / ${this.maxVisitedIndex + 1}`;
 
     this.prevBtn.disabled = this.currentIndex <= 0;
+
+    if (this.image.complete && this.image.naturalWidth > 0 && this.image.naturalHeight > 0) {
+      this._syncCardOrientation();
+    }
+  }
+
+  _syncCardOrientation() {
+    if (!this.image || !this.card) return;
+
+    const isPortrait = this.image.naturalHeight > this.image.naturalWidth;
+    this.card.classList.toggle("story-overlay__card--portrait", isPortrait);
+    this.card.classList.toggle("story-overlay__card--landscape", !isPortrait);
   }
 
   async _loadSlides() {
@@ -140,6 +153,7 @@ export class StoryOverlay {
     this.outsideHint = root.querySelector(".story-overlay__outside-hint");
 
     this.prevBtn.addEventListener("click", () => this._goPrevious());
+    this.image.addEventListener("load", () => this._syncCardOrientation());
 
     root.addEventListener("click", (event) => {
       if (!this.isOpen()) return;
