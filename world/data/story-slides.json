@@ -1,0 +1,64 @@
+{
+  "slides": [
+    {
+      "title": "Memory 1 — First Spark",
+      "text": "A quiet beginning. The first story star is your entry point into the constellation.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 2 — Turning Point",
+      "text": "A small shift in direction changes the path. This panel is easy to edit later.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 3 — Echo",
+      "text": "A repeated signal comes back stronger, shaping the route through the night.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 4 — Drift",
+      "text": "Not everything is linear. This memory marks a curved detour before the climb.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 5 — Alignment",
+      "text": "For a moment, fragments align. The pattern becomes readable and calm.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 6 — Threshold",
+      "text": "Crossing this point unlocks the next phase. Keep advancing through the sequence.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 7 — Bloom",
+      "text": "Details appear where there was noise. The story starts to feel intentional.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 8 — Compression",
+      "text": "The distance narrows and the pace quickens. Focus on the active highlight.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 9 — Signal",
+      "text": "A clear marker in the dark. This slide can later hold a custom image and copy.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 10 — Resolve",
+      "text": "The constellation now has momentum. Every click connects the narrative.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 11 — Nearing End",
+      "text": "The final nodes gather near each other, preparing the close of the arc.",
+      "image": "./star.png"
+    },
+    {
+      "title": "Memory 12 — Closure",
+      "text": "The sequence completes. You can replace this with a final illustration later.",
+      "image": "./star.png"
+    }
+  ]
+}
