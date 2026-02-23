@@ -3,7 +3,7 @@ import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 
 export function createCamera() {
 const camera = new THREE.PerspectiveCamera(
-70,
+90,
 window.innerWidth / window.innerHeight,
 0.1,
 2000
@@ -28,12 +28,18 @@ export function createDreamyController(camera) {
   const smoothness = 0.08;
 
   const maxPitch = Math.PI / 2 - 0.05;
+  const maxYaw = Math.PI / 2; // +/- 90deg -> total 180deg scene
 
   window.addEventListener("mousemove", (e) => {
     if (document.pointerLockElement !== document.body) return;
 
     targetYaw   -= e.movementX * sensitivity;
     targetPitch -= e.movementY * sensitivity;
+
+    targetYaw = Math.max(
+      -maxYaw,
+      Math.min(maxYaw, targetYaw)
+    );
 
     // Clamp vertical
     targetPitch = Math.max(

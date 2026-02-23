@@ -107,8 +107,8 @@ export class BackgroundStars {
           float glareStrength = clamp(vSize / 16.0, 0.08, 0.4);
           float glare = (spikeX + spikeY) * glareStrength;
 
-          float nearBoost = mix(1.15, 0.75, clamp(vDepth / 1400.0, 0.0, 1.0));
-          float alpha = (core * 1.15 + halo * 0.6 + glare * 0.45) * opacity * vOpacity * nearBoost;
+          float nearBoost = mix(1.25, 0.95, clamp(vDepth / 1600.0, 0.0, 1.0));
+          float alpha = (core * 1.35 + halo * 0.95 + glare * 0.55) * opacity * vOpacity * nearBoost;
 
           if (alpha <= 0.0) discard;
 
@@ -220,8 +220,8 @@ class StoryStar {
           float glareStrength = clamp(vSize / 16.0, 0.08, 0.4);
           float glare = (spikeX + spikeY) * glareStrength;
 
-          float nearBoost = mix(1.15, 0.75, clamp(vDepth / 1400.0, 0.0, 1.0));
-          float alpha = (core * 1.15 + halo * 0.6 + glare * 0.45) * opacity * vOpacity * nearBoost;
+          float nearBoost = mix(1.25, 0.95, clamp(vDepth / 1600.0, 0.0, 1.0));
+          float alpha = (core * 1.35 + halo * 0.95 + glare * 0.55) * opacity * vOpacity * nearBoost;
 
           if (alpha <= 0.0) discard;
 

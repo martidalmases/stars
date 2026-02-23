@@ -25,7 +25,7 @@ const mat = new THREE.ShaderMaterial({
     topColor: { value: new THREE.Color(0x05070f) },
     bottomColor: { value: new THREE.Color(0x1a2744) },
     horizonColor: { value: new THREE.Color(0x4d6b9a) },
-    horizonZ: { value: 0.0 },
+    horizonY: { value: 0.0 },
     horizonBlend: { value: 0.18 }
   },
 
@@ -44,17 +44,17 @@ const mat = new THREE.ShaderMaterial({
     uniform vec3 topColor;
     uniform vec3 bottomColor;
     uniform vec3 horizonColor;
-    uniform float horizonZ;
+    uniform float horizonY;
     uniform float horizonBlend;
     varying vec3 vWorldPosition;
 
 
     void main() {
       vec3 dir = normalize(vWorldPosition);
-      float h = smoothstep(-0.6, 0.9, dir.z - horizonZ);
+      float h = smoothstep(-0.6, 0.9, dir.y - horizonY);
       float base = smoothstep(0.0, 1.0, h);
       vec3 color = mix(bottomColor, topColor, base);
-      float horizon = 1.0 - smoothstep(0.0, horizonBlend, abs(dir.z - horizonZ));
+      float horizon = 1.0 - smoothstep(0.0, horizonBlend, abs(dir.y - horizonY));
       color = mix(color, horizonColor, horizon * 0.85);
       gl_FragColor = vec4(color, 1.0);
     }
