@@ -1,21 +1,27 @@
 export class StoryOverlay {
   constructor({ dataUrl = "./data/story-slides.json" } = {}) {
     this.dataUrl = dataUrl;
+    this.allSlides = [];
     this.slides = [];
     this.currentIndex = 0;
+    this.maxVisitedIndex = -1;
 
     this.root = null;
+    this.card = null;
     this.image = null;
     this.title = null;
     this.body = null;
     this.counter = null;
     this.prevBtn = null;
-    this.nextBtn = null;
-    this.closeBtn = null;
+    this.outsideHint = null;
+
+    this.openedAt = 0;
+    this.minCloseDelayMs = 3000;
   }
 
   async init() {
-    this.slides = await this._loadSlides();
+    this.allSlides = await this._loadSlides();
+    this.slides = this.allSlides.length > 1 ? this.allSlides.slice(0, -1) : this.allSlides;
     this._buildDom();
   }
 
@@ -23,24 +29,48 @@ export class StoryOverlay {
     return this.root?.classList.contains("is-open") ?? false;
   }
 
-  open(index) {
-    if (!this.root || this.slides.length === 0) return;
+  hasSlide(index) {
+    return index >= 0 && index < this.slides.length;
+  }
 
-    this.currentIndex = Math.max(0, Math.min(index, this.slides.length - 1));
+  getEndingSlide() {
+    return this.allSlides[this.allSlides.length - 1] || {
+      title: "The End",
+      text: "The constellation has completed.",
+      image: "./star.png"
+    };
+  }
+
+  open(index) {
+    if (!this.root || this.slides.length === 0 || !this.hasSlide(index)) return;
+
+    this.maxVisitedIndex = Math.max(this.maxVisitedIndex, index);
+    this.currentIndex = Math.min(index, this.maxVisitedIndex);
+    this.openedAt = performance.now();
+
     this._renderCurrent();
     this.root.classList.add("is-open");
+
+    this.outsideHint.classList.remove("is-visible");
+    window.setTimeout(() => {
+      if (!this.isOpen()) return;
+      this.outsideHint.classList.add("is-visible");
+    }, this.minCloseDelayMs);
   }
 
-  close() {
+  close({ recapturePointer = false } = {}) {
     if (!this.root) return;
+
     this.root.classList.remove("is-open");
+    this.outsideHint.classList.remove("is-visible");
+
+    if (recapturePointer) {
+      document.body.requestPointerLock?.();
+    }
   }
 
-  _go(delta) {
-    if (this.slides.length === 0) return;
-
-    const len = this.slides.length;
-    this.currentIndex = (this.currentIndex + delta + len) % len;
+  _goPrevious() {
+    this.currentIndex = Math.max(0, this.currentIndex - 1);
     this._renderCurrent();
   }
 
@@ -52,7 +82,9 @@ export class StoryOverlay {
     this.image.alt = slide.title;
     this.title.textContent = slide.title;
     this.body.textContent = slide.text;
-    this.counter.textContent = `${this.currentIndex + 1} / ${this.slides.length}`;
+    this.counter.textContent = `${this.currentIndex + 1} / ${this.maxVisitedIndex + 1}`;
+
+    this.prevBtn.disabled = this.currentIndex <= 0;
   }
 
   async _loadSlides() {
@@ -81,7 +113,6 @@ export class StoryOverlay {
     root.innerHTML = `
       <div class="story-overlay__backdrop"></div>
       <section class="story-overlay__card" role="dialog" aria-modal="true" aria-label="Story memory">
-        <button class="story-overlay__close" type="button" aria-label="Close">✕</button>
         <div class="story-overlay__media-wrap">
           <img class="story-overlay__media" src="" alt="" />
         </div>
@@ -91,37 +122,38 @@ export class StoryOverlay {
           <div class="story-overlay__footer">
             <button class="story-overlay__nav story-overlay__nav--prev" type="button">Previous</button>
             <span class="story-overlay__counter"></span>
-            <button class="story-overlay__nav story-overlay__nav--next" type="button">Next</button>
           </div>
         </div>
       </section>
+      <div class="story-overlay__outside-hint">Click outside the box to continue</div>
     `;
 
     document.body.appendChild(root);
 
     this.root = root;
+    this.card = root.querySelector(".story-overlay__card");
     this.image = root.querySelector(".story-overlay__media");
     this.title = root.querySelector(".story-overlay__title");
     this.body = root.querySelector(".story-overlay__text");
     this.counter = root.querySelector(".story-overlay__counter");
     this.prevBtn = root.querySelector(".story-overlay__nav--prev");
-    this.nextBtn = root.querySelector(".story-overlay__nav--next");
-    this.closeBtn = root.querySelector(".story-overlay__close");
+    this.outsideHint = root.querySelector(".story-overlay__outside-hint");
 
-    root.querySelector(".story-overlay__backdrop").addEventListener("click", () => this.close());
-    this.closeBtn.addEventListener("click", () => this.close());
-    this.prevBtn.addEventListener("click", () => this._go(-1));
-    this.nextBtn.addEventListener("click", () => this._go(1));
+    this.prevBtn.addEventListener("click", () => this._goPrevious());
 
     root.addEventListener("click", (event) => {
-      event.stopPropagation();
+      if (!this.isOpen()) return;
+      if (this.card.contains(event.target)) return;
+
+      const canClose = performance.now() - this.openedAt >= this.minCloseDelayMs;
+      if (!canClose) return;
+
+      this.close({ recapturePointer: true });
     });
 
     window.addEventListener("keydown", (event) => {
       if (!this.isOpen()) return;
-      if (event.key === "Escape") this.close();
-      if (event.key === "ArrowLeft") this._go(-1);
-      if (event.key === "ArrowRight") this._go(1);
+      if (event.key === "ArrowLeft") this._goPrevious();
     });
   }
 }
