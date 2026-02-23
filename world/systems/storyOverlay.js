@@ -13,6 +13,7 @@ export class StoryOverlay {
     this.body = null;
     this.counter = null;
     this.prevBtn = null;
+    this.nextBtn = null;
     this.outsideHint = null;
 
     this.openedAt = 0;
@@ -74,17 +75,38 @@ export class StoryOverlay {
     this._renderCurrent();
   }
 
+  _goNext() {
+    const furthestUnlocked = Math.min(this.maxVisitedIndex, this.slides.length - 1);
+    this.currentIndex = Math.min(furthestUnlocked, this.currentIndex + 1);
+    this._renderCurrent();
+  }
+
   _renderCurrent() {
     const slide = this.slides[this.currentIndex];
     if (!slide) return;
 
+    this.card.classList.remove("story-overlay__card--portrait", "story-overlay__card--landscape");
     this.image.src = slide.image;
     this.image.alt = slide.title;
     this.title.textContent = slide.title;
     this.body.textContent = slide.text;
     this.counter.textContent = `${this.currentIndex + 1} / ${this.maxVisitedIndex + 1}`;
 
+    const furthestUnlocked = Math.min(this.maxVisitedIndex, this.slides.length - 1);
     this.prevBtn.disabled = this.currentIndex <= 0;
+    this.nextBtn.disabled = this.currentIndex >= furthestUnlocked;
+
+    if (this.image.complete && this.image.naturalWidth > 0 && this.image.naturalHeight > 0) {
+      this._syncCardOrientation();
+    }
+  }
+
+  _syncCardOrientation() {
+    if (!this.image || !this.card) return;
+
+    const isPortrait = this.image.naturalHeight > this.image.naturalWidth;
+    this.card.classList.toggle("story-overlay__card--portrait", isPortrait);
+    this.card.classList.toggle("story-overlay__card--landscape", !isPortrait);
   }
 
   async _loadSlides() {
@@ -120,8 +142,11 @@ export class StoryOverlay {
           <h2 class="story-overlay__title"></h2>
           <p class="story-overlay__text"></p>
           <div class="story-overlay__footer">
-            <button class="story-overlay__nav story-overlay__nav--prev" type="button">Previous</button>
             <span class="story-overlay__counter"></span>
+            <div class="story-overlay__nav-group">
+              <button class="story-overlay__nav story-overlay__nav--prev" type="button" aria-label="Previous memory">Prev</button>
+              <button class="story-overlay__nav story-overlay__nav--next" type="button" aria-label="Next memory">Next</button>
+            </div>
           </div>
         </div>
       </section>
@@ -137,9 +162,12 @@ export class StoryOverlay {
     this.body = root.querySelector(".story-overlay__text");
     this.counter = root.querySelector(".story-overlay__counter");
     this.prevBtn = root.querySelector(".story-overlay__nav--prev");
+    this.nextBtn = root.querySelector(".story-overlay__nav--next");
     this.outsideHint = root.querySelector(".story-overlay__outside-hint");
 
     this.prevBtn.addEventListener("click", () => this._goPrevious());
+    this.nextBtn.addEventListener("click", () => this._goNext());
+    this.image.addEventListener("load", () => this._syncCardOrientation());
 
     root.addEventListener("click", (event) => {
       if (!this.isOpen()) return;
@@ -154,6 +182,7 @@ export class StoryOverlay {
     window.addEventListener("keydown", (event) => {
       if (!this.isOpen()) return;
       if (event.key === "ArrowLeft") this._goPrevious();
+      if (event.key === "ArrowRight") this._goNext();
     });
   }
 }

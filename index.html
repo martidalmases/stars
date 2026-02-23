@@ -159,6 +159,18 @@
     let transitioning = false;
     let typingTimer = null;
 
+    const NO_POSITIONS = [
+      { x: 0.16, y: 0.2 },
+      { x: 0.5, y: 0.18 },
+      { x: 0.82, y: 0.22 },
+      { x: 0.2, y: 0.5 },
+      { x: 0.5, y: 0.52 },
+      { x: 0.8, y: 0.48 },
+      { x: 0.14, y: 0.76 },
+      { x: 0.5, y: 0.8 },
+      { x: 0.84, y: 0.74 }
+    ];
+
     function typeText(text) {
       if (typingTimer) {
         clearInterval(typingTimer);
@@ -191,23 +203,20 @@
       const localX = pointerX - areaRect.left;
       const localY = pointerY - areaRect.top;
 
-      let candidateX = noBtn.offsetLeft;
-      let candidateY = noBtn.offsetTop;
+      const candidates = NO_POSITIONS.map((position) => {
+        const rawX = position.x * areaRect.width - noRect.width / 2;
+        const rawY = position.y * areaRect.height;
+        const x = Math.max(minX, Math.min(maxX, rawX));
+        const y = Math.max(minY, Math.min(maxY, rawY));
+        const distanceToCursor = Math.hypot((x + noRect.width / 2) - localX, y - localY);
+        return { x, y, distanceToCursor };
+      }).sort((a, b) => b.distanceToCursor - a.distanceToCursor);
 
-      for (let jump = 0; jump < 4; jump++) {
-        const randomX = Math.random() * (maxX - minX) + minX;
-        const randomY = Math.random() * (maxY - minY) + minY;
+      const safestCandidates = candidates.slice(0, 3);
+      const picked = safestCandidates[Math.floor(Math.random() * safestCandidates.length)] || candidates[0];
 
-        const dist = Math.hypot(randomX - localX, randomY - localY);
-        if (dist > 120 || jump === 3) {
-          candidateX = randomX;
-          candidateY = randomY;
-          break;
-        }
-      }
-
-      noBtn.style.left = `${candidateX + noRect.width / 2}px`;
-      noBtn.style.top = `${candidateY}px`;
+      noBtn.style.left = `${picked.x + noRect.width / 2}px`;
+      noBtn.style.top = `${picked.y}px`;
     }
 
     function pursuitNo(event) {
@@ -225,6 +234,17 @@
       }
     }
 
+    function captureSceneCursor() {
+      const sceneDoc = sceneFrame.contentWindow?.document;
+      const sceneBody = sceneDoc?.body;
+      if (!sceneBody?.requestPointerLock) return;
+
+      const lockResult = sceneBody.requestPointerLock();
+      if (lockResult?.catch) {
+        lockResult.catch(() => {});
+      }
+    }
+
     document.addEventListener("mousemove", pursuitNo);
 
     yesBtn.addEventListener("click", async () => {
@@ -238,6 +258,7 @@
       transitioning = true;
       yesBtn.disabled = true;
       noBtn.disabled = true;
+      captureSceneCursor();
 
       message.textContent = "";
 
