@@ -27,7 +27,7 @@ const mat = new THREE.ShaderMaterial({
     lowerMidColor: { value: new THREE.Color(0x264f8d) },
     horizonColor: { value: new THREE.Color(0xe2dcbd) },
     horizonY: { value: 0.0 },
-    horizonBlend: { value: 0.28 }
+    horizonBlend: { value: 0.18 }
   },
 
   vertexShader: `
