@@ -4,11 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>laurins</title>
+  <link rel="icon" type="image/png" href="world/star.png">
   <style>
-    :root {
-      color-scheme: dark;
-    }
-
     * {
       box-sizing: border-box;
     }
@@ -19,8 +16,9 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #000;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #fff;
+      color: #000;
+      font-family: "Courier New", Courier, monospace;
     }
 
     #scene-frame {
@@ -31,6 +29,7 @@
       border: 0;
       opacity: 0;
       transition: opacity 450ms ease;
+      background: #000;
     }
 
     #mini-game {
@@ -38,9 +37,9 @@
       inset: 0;
       display: grid;
       place-items: center;
-      color: #fff;
       z-index: 6;
-      transition: opacity 280ms ease;
+      transition: opacity 240ms ease;
+      background: #fff;
     }
 
     #mini-game.is-fading {
@@ -48,70 +47,71 @@
       pointer-events: none;
     }
 
-    .question-card {
-      position: relative;
-      width: min(620px, calc(100vw - 32px));
-      min-height: 230px;
-      border-radius: 20px;
-      padding: 32px 22px 22px;
+    .paper {
+      width: min(860px, calc(100vw - 42px));
       text-align: center;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(8px);
+      padding: 22px 18px;
     }
 
     .question {
-      margin: 0 0 24px;
-      font-size: clamp(1.3rem, 2.2vw, 2rem);
-      font-weight: 500;
-      letter-spacing: 0.02em;
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 2.1rem);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.3;
     }
 
     .button-area {
       position: relative;
-      height: 104px;
       width: 100%;
+      height: 280px;
+      margin-top: 28px;
     }
 
     .btn {
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.05);
-      color: #fff;
+      position: absolute;
+      border: 2px solid #000;
+      border-radius: 0;
+      background: #fff;
+      color: #000;
+      font-family: inherit;
       font-size: 1rem;
-      font-weight: 500;
-      letter-spacing: 0.04em;
+      font-weight: 700;
+      letter-spacing: 0.08em;
       padding: 10px 24px;
       cursor: pointer;
-      transition: transform 120ms ease, background 120ms ease;
       user-select: none;
+      transition: transform 70ms ease, background 120ms ease, left 95ms ease, top 95ms ease;
     }
 
     .btn:hover {
-      background: rgba(255, 255, 255, 0.16);
+      background: #f0f0f0;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+      background: #e8e8e8;
     }
 
     #yes-btn {
-      position: absolute;
-      left: 34%;
-      top: 34px;
+      left: 38%;
+      top: 120px;
       transform: translateX(-50%);
     }
 
     #no-btn {
-      position: absolute;
-      left: 66%;
-      top: 34px;
+      left: 62%;
+      top: 120px;
       transform: translateX(-50%);
-      transition: left 170ms ease, top 170ms ease;
     }
 
     #message {
-      margin-top: 16px;
-      min-height: 24px;
-      color: rgba(255, 255, 255, 0.86);
-      font-size: 0.96rem;
-      letter-spacing: 0.02em;
+      margin: 20px auto 0;
+      min-height: 52px;
+      max-width: 720px;
+      font-size: 1rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
     }
 
     #fade-layer {
@@ -134,8 +134,8 @@
   <iframe id="scene-frame" src="world/world.html" title="scene preload"></iframe>
 
   <main id="mini-game">
-    <section class="question-card">
-      <h1 class="question">Are you ready to enter?</h1>
+    <section class="paper">
+      <h1 class="question">DO YOU REALLY WANT TO ENTER?</h1>
       <div class="button-area" id="button-area">
         <button id="yes-btn" class="btn" type="button">YES</button>
         <button id="no-btn" class="btn" type="button">NO</button>
@@ -157,71 +157,89 @@
 
     let attemptedNo = false;
     let transitioning = false;
+    let typingTimer = null;
 
-    function moveNoButtonAway(fromX, fromY) {
+    function typeText(text) {
+      if (typingTimer) {
+        clearInterval(typingTimer);
+      }
+
+      message.textContent = "";
+      let i = 0;
+
+      typingTimer = setInterval(() => {
+        message.textContent += text[i] || "";
+        i += 1;
+
+        if (i >= text.length) {
+          clearInterval(typingTimer);
+          typingTimer = null;
+        }
+      }, 20);
+    }
+
+    function moveNoButtonAggressively(pointerX, pointerY) {
       const areaRect = buttonArea.getBoundingClientRect();
       const noRect = noBtn.getBoundingClientRect();
 
-      const margin = 8;
+      const margin = 10;
       const minX = margin;
       const minY = margin;
       const maxX = areaRect.width - noRect.width - margin;
       const maxY = areaRect.height - noRect.height - margin;
 
-      const currentX = noBtn.offsetLeft;
-      const currentY = noBtn.offsetTop;
+      const localX = pointerX - areaRect.left;
+      const localY = pointerY - areaRect.top;
 
-      const dirX = currentX + noRect.width / 2 - (fromX - areaRect.left);
-      const dirY = currentY + noRect.height / 2 - (fromY - areaRect.top);
-      const length = Math.max(0.01, Math.hypot(dirX, dirY));
+      let candidateX = noBtn.offsetLeft;
+      let candidateY = noBtn.offsetTop;
 
-      const push = 74;
-      const targetX = currentX + (dirX / length) * push;
-      const targetY = currentY + (dirY / length) * push;
+      for (let jump = 0; jump < 4; jump++) {
+        const randomX = Math.random() * (maxX - minX) + minX;
+        const randomY = Math.random() * (maxY - minY) + minY;
 
-      const clampedX = Math.max(minX, Math.min(maxX, targetX));
-      const clampedY = Math.max(minY, Math.min(maxY, targetY));
-
-      noBtn.style.left = `${clampedX + noRect.width / 2}px`;
-      noBtn.style.top = `${clampedY}px`;
-    }
-
-    function dodgeNo(event) {
-      if (transitioning) return;
-      attemptedNo = true;
-      message.textContent = "Nice try 🙂";
-      moveNoButtonAway(event.clientX, event.clientY);
-    }
-
-    noBtn.addEventListener("mouseenter", dodgeNo);
-    noBtn.addEventListener("mousedown", dodgeNo);
-    noBtn.addEventListener("click", (event) => {
-      event.preventDefault();
-      dodgeNo(event);
-    });
-
-    buttonArea.addEventListener("mousemove", (event) => {
-      if (transitioning) return;
-      const rect = noBtn.getBoundingClientRect();
-      const dx = event.clientX - (rect.left + rect.width / 2);
-      const dy = event.clientY - (rect.top + rect.height / 2);
-      const distance = Math.hypot(dx, dy);
-
-      if (distance < 52) {
-        dodgeNo(event);
+        const dist = Math.hypot(randomX - localX, randomY - localY);
+        if (dist > 120 || jump === 3) {
+          candidateX = randomX;
+          candidateY = randomY;
+          break;
+        }
       }
-    });
+
+      noBtn.style.left = `${candidateX + noRect.width / 2}px`;
+      noBtn.style.top = `${candidateY}px`;
+    }
+
+    function pursuitNo(event) {
+      if (transitioning) return;
+
+      const rect = noBtn.getBoundingClientRect();
+      const distance = Math.hypot(
+        event.clientX - (rect.left + rect.width / 2),
+        event.clientY - (rect.top + rect.height / 2)
+      );
+
+      if (distance < 105) {
+        attemptedNo = true;
+        moveNoButtonAggressively(event.clientX, event.clientY);
+      }
+    }
+
+    document.addEventListener("mousemove", pursuitNo);
 
     yesBtn.addEventListener("click", async () => {
       if (transitioning) return;
+
+      if (!attemptedNo) {
+        typeText("TOO EASY. TRY PRESSING NO FIRST.");
+        return;
+      }
+
       transitioning = true;
-
-      message.textContent = attemptedNo
-        ? "You won. Entering the scene..."
-        : "You trusted immediately. Bold move.";
-
       yesBtn.disabled = true;
       noBtn.disabled = true;
+
+      message.textContent = "";
 
       await new Promise((resolve) => setTimeout(resolve, 520));
 
