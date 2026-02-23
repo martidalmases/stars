@@ -6,6 +6,7 @@ export function createScene() {
 }
 
 export function createSkySphere() {
+  console.log("[Sky] Initializing procedural sky sphere shader...");
   const geo = new THREE.SphereGeometry(1010, 64, 64);
 
   const mat = new THREE.ShaderMaterial({
@@ -15,10 +16,10 @@ export function createSkySphere() {
     depthTest: false,
     uniforms: {
       time: { value: 0 },
-      zenithColor: { value: new THREE.Color(0x05070f) },
-      upperMidColor: { value: new THREE.Color(0x0d2153) },
-      lowerMidColor: { value: new THREE.Color(0x304a72) },
-      horizonColor: { value: new THREE.Color(0x887574) },
+      zenithColor: { value: new THREE.Color(0x02030a) },
+      upperMidColor: { value: new THREE.Color(0x0b245e) },
+      lowerMidColor: { value: new THREE.Color(0x244a82) },
+      horizonColor: { value: new THREE.Color(0xf4cf9c) },
       galaxyAxis: { value: new THREE.Vector3(0.3, 0.92, -0.24).normalize() }
     },
     vertexShader: `
@@ -49,20 +50,34 @@ export function createSkySphere() {
         return smoothstep(edge0, edge1, n);
       }
 
-      vec3 starColor(vec3 dir, vec3 cool, vec3 warm, float freq) {
+      vec3 starColor(vec3 dir, float freq) {
         float t = hash(dir * freq);
-        return mix(cool, warm, smoothstep(0.25, 0.9, t));
+
+        vec3 cool = vec3(0.76, 0.84, 1.0);
+        vec3 neutral = vec3(0.95, 0.95, 0.93);
+        vec3 warm = vec3(1.0, 0.88, 0.7);
+
+        vec3 col = mix(cool, neutral, smoothstep(0.15, 0.6, t));
+        col = mix(col, warm, smoothstep(0.65, 0.98, t));
+        return col;
+      }
+
+      float twinkle(vec3 dir, float speed, float amount, float phaseFreq) {
+        float gate = smoothstep(0.72, 1.0, hash(dir * (phaseFreq * 0.5)));
+        float phase = hash(dir * phaseFreq) * 8.0;
+        return 1.0 + sin(time * speed + phase) * amount * gate;
       }
 
       void main() {
         vec3 dir = normalize(vDir);
 
         float y01 = clamp(dir.y * 0.5 + 0.5, 0.0, 1.0);
-        vec3 sky = mix(lowerMidColor, upperMidColor, smoothstep(0.08, 0.72, y01));
+        vec3 sky = mix(horizonColor, lowerMidColor, smoothstep(0.0, 0.24, y01));
+        sky = mix(sky, upperMidColor, smoothstep(0.12, 0.7, y01));
         sky = mix(sky, zenithColor, smoothstep(0.55, 1.0, y01));
 
         float horizonBlend = 1.0 - smoothstep(0.0, 0.24, abs(dir.y));
-        sky = mix(sky, horizonColor, horizonBlend * 0.42);
+        sky = mix(sky, horizonColor, horizonBlend * 0.34);
 
         float plane = abs(dot(dir, galaxyAxis));
         float galaxyBand = 1.0 - smoothstep(0.0, 0.42, plane);
@@ -72,21 +87,27 @@ export function createSkySphere() {
 
         vec3 stars = vec3(0.0);
 
-        float l1 = starMask(dir + vec3(0.013, -0.017, 0.007), 1350.0, 0.9962, 0.9997);
-        l1 *= (0.18 + 0.38 * galaxyBand);
-        stars += starColor(dir, vec3(0.72, 0.78, 0.95), vec3(0.9, 0.86, 0.78), 610.0) * l1;
+        // Small stars: dense field
+        float sSmall = starMask(dir + vec3(0.013, -0.017, 0.007), 1400.0, 0.9964, 0.9998);
+        float bSmall = mix(0.12, 0.45, hash(dir * 510.0));
+        float tSmall = twinkle(dir + vec3(0.02, 0.0, -0.01), 0.45, 0.05, 120.0);
+        stars += starColor(dir, 610.0) * sSmall * bSmall * (0.4 + galaxyBand * 0.45) * tSmall;
 
-        float l2 = starMask(dir + vec3(-0.01, 0.02, -0.013), 720.0, 0.9946, 0.9994);
-        l2 *= (0.35 + 0.65 * galaxyBand);
-        stars += starColor(dir, vec3(0.82, 0.89, 1.0), vec3(1.0, 0.91, 0.76), 380.0) * l2;
+        // Medium stars: brighter and less dense
+        float sMedium = starMask(dir + vec3(-0.01, 0.02, -0.013), 760.0, 0.9951, 0.99965);
+        float hMedium = starMask(dir + vec3(0.002, -0.004, 0.006), 240.0, 0.9935, 0.9992) * 0.22;
+        float bMedium = mix(0.5, 1.15, hash(dir * 336.0));
+        float tMedium = twinkle(dir + vec3(-0.01, 0.03, 0.01), 0.6, 0.08, 84.0);
+        stars += starColor(dir, 380.0) * (sMedium * bMedium * tMedium + hMedium) * (0.55 + 0.65 * galaxyBand);
 
-        float core = starMask(dir + vec3(0.004, -0.003, 0.01), 260.0, 0.9965, 0.99992);
-        float halo = starMask(dir + vec3(-0.006, 0.005, -0.004), 210.0, 0.9945, 0.9995) * 0.55;
-        float spikes = starMask(vec3(dir.x * 7.0, dir.y * 1.3, dir.z * 7.0), 95.0, 0.9982, 0.99998) * 0.22;
-        float twinkleGate = smoothstep(0.86, 1.0, hash(dir * 44.0));
-        float twinkle = 1.0 + sin(time * 0.55 + hash(dir * 52.0) * 8.0) * 0.07 * twinkleGate;
-        vec3 bright = starColor(dir, vec3(0.92, 0.96, 1.0), vec3(1.0, 0.9, 0.74), 280.0);
-        stars += bright * (core * twinkle * (0.95 + galaxyBand * 0.45) + halo + spikes);
+        // Large stars: sparse cores with halo/glare spikes
+        float core = starMask(dir + vec3(0.004, -0.003, 0.01), 270.0, 0.9968, 0.99996);
+        float halo = starMask(dir + vec3(-0.006, 0.005, -0.004), 220.0, 0.9948, 0.9997) * 0.85;
+        float spikes = starMask(vec3(dir.x * 7.0, dir.y * 1.3, dir.z * 7.0), 100.0, 0.9985, 0.999995) * 0.28;
+        float brightVariance = mix(0.9, 1.75, hash(dir * 123.0));
+        float tLarge = twinkle(dir, 0.72, 0.12, 52.0);
+        vec3 bright = starColor(dir, 280.0);
+        stars += bright * ((core * brightVariance * tLarge * (0.95 + galaxyBand * 0.5)) + halo + spikes);
 
         stars *= (1.0 - horizonBlend * 0.75);
 
@@ -102,6 +123,8 @@ export function createSkySphere() {
   sky.userData.update = (delta = 0.016) => {
     mat.uniforms.time.value += delta;
   };
+
+  console.log("[Sky] Shader ready: gradient + procedural star layers + twinkle enabled.");
 
   return sky;
 }

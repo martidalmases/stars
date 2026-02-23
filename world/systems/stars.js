@@ -46,22 +46,29 @@ class StoryStar {
       uniforms: {
         color: { value: this.baseColor.clone() },
         opacity: { value: 1.0 },
-        size: { value: this.baseSize }
+        size: { value: this.baseSize },
+        time: { value: 0.0 },
+        seed: { value: (this.index + 1) * 13.371 }
       },
       vertexShader: `
         uniform float size;
+        uniform float time;
+        uniform float seed;
         varying float vOpacity;
         varying float vSize;
         varying float vDepth;
+        varying float vPulse;
 
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float depth = max(1.0, abs(mvPosition.z));
-          gl_PointSize = max(2.5, size * (340.0 / depth));
+          float pulse = 1.0 + sin(time * (0.9 + fract(seed) * 0.6) + seed) * 0.04;
+          gl_PointSize = max(2.5, size * pulse * (340.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
           vSize = size;
           vDepth = depth;
+          vPulse = pulse;
         }
       `,
       fragmentShader: `
@@ -70,6 +77,7 @@ class StoryStar {
         varying float vOpacity;
         varying float vSize;
         varying float vDepth;
+        varying float vPulse;
 
         void main() {
           vec2 uv = gl_PointCoord * 2.0 - 1.0;
@@ -85,7 +93,7 @@ class StoryStar {
           float glare = (spikeX + spikeY) * glareStrength;
 
           float nearBoost = mix(1.25, 0.95, clamp(vDepth / 1600.0, 0.0, 1.0));
-          float alpha = (core * 1.35 + halo * 0.95 + glare * 0.55) * opacity * vOpacity * nearBoost;
+          float alpha = (core * 1.35 + halo * 0.95 + glare * 0.55) * opacity * vOpacity * nearBoost * vPulse;
 
           if (alpha <= 0.0) discard;
 
@@ -155,6 +163,7 @@ class StoryStar {
     );
 
     this.material.uniforms.size.value = this.currentSize;
+    this.material.uniforms.time.value += 0.016;
 
 
     // Smooth color reset
@@ -194,12 +203,15 @@ export class StoryStarSystem {
   }
 
   init() {
+    console.log("[StoryStars] Initializing story stars...");
     this._createStars();
     this._setupInput();
 
     if (this.stars.length > 0) {
       this.stars[0].setState(STORY_STATE.SELECTED);
     }
+
+    console.log(`[StoryStars] Ready. Total stars: ${this.stars.length}`);
   }
 
   _createStars() {
@@ -211,6 +223,13 @@ export class StoryStarSystem {
         .add(this.clusterCenter);
 
       const star = new StoryStar(i, pos);
+
+      const tintRoll = Math.random();
+      if (tintRoll < 0.33) {
+        star.baseColor.set(0xd9e8ff);
+      } else if (tintRoll > 0.78) {
+        star.baseColor.set(0xffe7bd);
+      }
 
       const mesh = star.create();
 
@@ -262,6 +281,7 @@ export class StoryStarSystem {
 
 
     this.onStarClick(star.index, star);
+    console.log(`[StoryStars] Click handled for star #${star.index}`);
 
     star.setState(STORY_STATE.CLICKED);
 
