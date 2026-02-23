@@ -27,9 +27,9 @@ function randomOnSphere(radius) {
 
 export class BackgroundStars {
   constructor({
-    count = 3500,
-    radius = 980,
-    size = 5.5,
+    count = 2500,
+    radius = 990,
+    size = 2.4,
     color = 0xffffff
   } = {}) {
     this.count = count;
@@ -54,25 +54,27 @@ export class BackgroundStars {
       positions[i * 3 + 1] = v.y;
       positions[i * 3 + 2] = v.z;
 
-      const shade = 0.82 + Math.random() * 0.18;
+      const shade = 0.75 + Math.random() * 0.25;
       colors[i * 3] = shade;
       colors[i * 3 + 1] = shade;
       colors[i * 3 + 2] = 1.0;
     }
 
-    geometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(positions, 3)
-    );
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    geometry.computeBoundingSphere();
+
+    const starTexture = new THREE.TextureLoader().load(
+      new URL("../star.png", import.meta.url).href
+    );
 
     this.material = new THREE.PointsMaterial({
+      map: starTexture,
       color: this.color,
       size: this.size,
+      sizeAttenuation: false,
       transparent: true,
-      opacity: 0.92,
-      sizeAttenuation: true,
+      opacity: 0.95,
+      alphaTest: 0.02,
       depthWrite: false,
       depthTest: false,
       blending: THREE.AdditiveBlending,
@@ -91,8 +93,7 @@ export class BackgroundStars {
 
     this.time += delta;
 
-    const pulse = 0.88 + Math.sin(this.time * 0.65) * 0.08;
-
+    const pulse = 0.9 + Math.sin(this.time * 0.5) * 0.07;
     this.material.opacity = pulse;
   }
 }
@@ -282,7 +283,7 @@ export class StoryStarSystem {
 
     this.stars = [];
 
-    this.coneAngle = THREE.MathUtils.degToRad(15);
+    this.coneAngle = THREE.MathUtils.degToRad(18);
 
     this.lines = [];
   }
