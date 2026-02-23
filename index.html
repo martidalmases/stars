@@ -234,6 +234,17 @@
       }
     }
 
+    function captureSceneCursor() {
+      const sceneDoc = sceneFrame.contentWindow?.document;
+      const sceneBody = sceneDoc?.body;
+      if (!sceneBody?.requestPointerLock) return;
+
+      const lockResult = sceneBody.requestPointerLock();
+      if (lockResult?.catch) {
+        lockResult.catch(() => {});
+      }
+    }
+
     document.addEventListener("mousemove", pursuitNo);
 
     yesBtn.addEventListener("click", async () => {
@@ -247,6 +258,7 @@
       transitioning = true;
       yesBtn.disabled = true;
       noBtn.disabled = true;
+      captureSceneCursor();
 
       message.textContent = "";
 
