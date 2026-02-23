@@ -17,7 +17,7 @@ export function createSkySphere() {
     depthTest: false,
     uniforms: {
       time: { value: 0 },
-      zenithColor: { value: new THREE.Color(0x02030a) },
+      zenithColor: { value: new THREE.Color(0x222244) },
       upperMidColor: { value: new THREE.Color(0x0b245e) },
       lowerMidColor: { value: new THREE.Color(0x244a82) },
       horizonColor: { value: new THREE.Color(0xf4cf9c) },
