@@ -167,7 +167,8 @@ storyStars.update();
 if (sky.userData.update) {
   sky.userData.update(delta);
 }
-
+  
+console.log(scene.children.length);
 renderer.render(scene, camera);
 }
 
