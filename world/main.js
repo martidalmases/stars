@@ -52,8 +52,6 @@ document.addEventListener("pointerlockchange", () => {
 // ==============================
 
 const updateCamera = createDreamyController(camera);
-camera.far = 3000;
-camera.updateProjectionMatrix();
 
 // ==============================
 // Sky
