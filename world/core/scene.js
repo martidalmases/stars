@@ -22,11 +22,12 @@ const mat = new THREE.ShaderMaterial({
 
 
   uniforms: {
-    topColor: { value: new THREE.Color(0x05070f) },
-    bottomColor: { value: new THREE.Color(0x1a2744) },
-    horizonColor: { value: new THREE.Color(0x4d6b9a) },
+    zenithColor: { value: new THREE.Color(0x04050c) },
+    upperMidColor: { value: new THREE.Color(0x0b1f55) },
+    lowerMidColor: { value: new THREE.Color(0x264f8d) },
+    horizonColor: { value: new THREE.Color(0xe2dcbd) },
     horizonY: { value: 0.0 },
-    horizonBlend: { value: 0.25 }
+    horizonBlend: { value: 0.28 }
   },
 
   vertexShader: `
@@ -41,8 +42,9 @@ const mat = new THREE.ShaderMaterial({
   `,
 
   fragmentShader: `
-    uniform vec3 topColor;
-    uniform vec3 bottomColor;
+    uniform vec3 zenithColor;
+    uniform vec3 upperMidColor;
+    uniform vec3 lowerMidColor;
     uniform vec3 horizonColor;
     uniform float horizonY;
     uniform float horizonBlend;
@@ -51,9 +53,11 @@ const mat = new THREE.ShaderMaterial({
 
     void main() {
       vec3 dir = normalize(vWorldPosition);
-      float h = smoothstep(-0.6, 0.9, dir.y - horizonY);
-      float base = smoothstep(0.0, 1.0, h);
-      vec3 color = mix(bottomColor, topColor, base);
+
+      float t = clamp(dir.y * 0.5 + 0.5, 0.0, 1.0);
+      vec3 color = mix(upperMidColor, zenithColor, smoothstep(0.35, 1.0, t));
+      color = mix(lowerMidColor, color, smoothstep(0.06, 0.75, t));
+
       float horizon = 1.0 - smoothstep(0.0, horizonBlend, abs(dir.y - horizonY));
       color = mix(color, horizonColor, horizon * 0.85);
       gl_FragColor = vec4(color, 1.0);
