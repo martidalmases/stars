@@ -1,1 +1,109 @@
+.story-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  z-index: 30;
+}
 
+.story-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.story-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 7, 18, 0.38);
+  backdrop-filter: blur(8px) saturate(1.05);
+}
+
+.story-overlay__card {
+  position: relative;
+  width: min(760px, calc(100vw - 40px));
+  max-height: calc(100vh - 60px);
+  overflow: auto;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px) saturate(1.1);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.story-overlay__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  font-size: 16px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+
+.story-overlay__media-wrap {
+  margin: 16px 16px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.story-overlay__media {
+  display: block;
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+}
+
+.story-overlay__content {
+  padding: 18px 20px 20px;
+}
+
+.story-overlay__title {
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  letter-spacing: 0.2px;
+  font-weight: 600;
+}
+
+.story-overlay__text {
+  margin: 0;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.story-overlay__footer {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.story-overlay__counter {
+  justify-self: center;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.9rem;
+}
+
+.story-overlay__nav {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.story-overlay__nav:hover,
+.story-overlay__close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}

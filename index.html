@@ -1,8 +1,251 @@
-<button id="yes">Yes</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>laurins</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-<script>
-  document.getElementById("yes").onclick = () => {
-    window.location.href = "world/world.html";
-  };
-</script>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #fff;
+      color: #000;
+      font-family: "Courier New", Courier, monospace;
+    }
 
+    #scene-frame {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      opacity: 0;
+      transition: opacity 450ms ease;
+      background: #000;
+    }
+
+    #mini-game {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 6;
+      transition: opacity 240ms ease;
+      background: #fff;
+    }
+
+    #mini-game.is-fading {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .paper {
+      width: min(860px, calc(100vw - 42px));
+      text-align: center;
+      padding: 22px 18px;
+    }
+
+    .question {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 2.1rem);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.3;
+    }
+
+    .button-area {
+      position: relative;
+      width: 100%;
+      height: 120px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      position: absolute;
+      border: 2px solid #000;
+      border-radius: 0;
+      background: #fff;
+      color: #000;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 10px 24px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 70ms ease, background 120ms ease, left 90ms ease, top 90ms ease;
+    }
+
+    .btn:hover {
+      background: #f0f0f0;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+      background: #e8e8e8;
+    }
+
+    #yes-btn {
+      left: 38%;
+      top: 40px;
+      transform: translateX(-50%);
+    }
+
+    #no-btn {
+      left: 62%;
+      top: 40px;
+      transform: translateX(-50%);
+    }
+
+    #message {
+      margin: 20px auto 0;
+      min-height: 52px;
+      max-width: 720px;
+      font-size: 1rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    #fade-layer {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 700ms ease;
+      z-index: 7;
+    }
+
+    #fade-layer.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <iframe id="scene-frame" src="world/world.html" title="scene preload"></iframe>
+
+  <main id="mini-game">
+    <section class="paper">
+      <h1 class="question">DO YOU REALLY WANT TO ENTER?</h1>
+      <div class="button-area" id="button-area">
+        <button id="yes-btn" class="btn" type="button">YES</button>
+        <button id="no-btn" class="btn" type="button">NO</button>
+      </div>
+      <p id="message"></p>
+    </section>
+  </main>
+
+  <div id="fade-layer"></div>
+
+  <script>
+    const sceneFrame = document.getElementById("scene-frame");
+    const miniGame = document.getElementById("mini-game");
+    const buttonArea = document.getElementById("button-area");
+    const yesBtn = document.getElementById("yes-btn");
+    const noBtn = document.getElementById("no-btn");
+    const message = document.getElementById("message");
+    const fadeLayer = document.getElementById("fade-layer");
+
+    let attemptedNo = false;
+    let transitioning = false;
+    let typingTimer = null;
+
+    function typeText(text) {
+      if (typingTimer) {
+        clearInterval(typingTimer);
+      }
+
+      message.textContent = "";
+      let i = 0;
+
+      typingTimer = setInterval(() => {
+        message.textContent += text[i] || "";
+        i += 1;
+
+        if (i >= text.length) {
+          clearInterval(typingTimer);
+          typingTimer = null;
+        }
+      }, 20);
+    }
+
+    function moveNoButtonAggressively(event) {
+      const areaRect = buttonArea.getBoundingClientRect();
+      const noRect = noBtn.getBoundingClientRect();
+
+      const margin = 6;
+      const minX = margin;
+      const minY = margin;
+      const maxX = areaRect.width - noRect.width - margin;
+      const maxY = areaRect.height - noRect.height - margin;
+
+      const clickX = event.clientX - areaRect.left;
+      const clickY = event.clientY - areaRect.top;
+
+      let candidateX = noBtn.offsetLeft;
+      let candidateY = noBtn.offsetTop;
+
+      for (let jump = 0; jump < 4; jump++) {
+        const randomX = Math.random() * (maxX - minX) + minX;
+        const randomY = Math.random() * (maxY - minY) + minY;
+
+        const dist = Math.hypot(randomX - clickX, randomY - clickY);
+        if (dist > 95 || jump === 3) {
+          candidateX = randomX;
+          candidateY = randomY;
+          break;
+        }
+      }
+
+      noBtn.style.left = `${candidateX + noRect.width / 2}px`;
+      noBtn.style.top = `${candidateY}px`;
+    }
+
+    function onNoAttempt(event) {
+      if (transitioning) return;
+      event.preventDefault();
+      attemptedNo = true;
+      typeText("NICE TRY. THE NO BUTTON ISN'T REALLY AN OPTION.");
+      moveNoButtonAggressively(event);
+    }
+
+    noBtn.addEventListener("pointerdown", onNoAttempt);
+    noBtn.addEventListener("click", onNoAttempt);
+
+    yesBtn.addEventListener("click", async () => {
+      if (transitioning) return;
+
+      if (!attemptedNo) {
+        typeText("TOO EASY. TRY PRESSING NO FIRST.");
+        return;
+      }
+
+      transitioning = true;
+      yesBtn.disabled = true;
+      noBtn.disabled = true;
+
+      typeText("ACCEPTED. LOADING THE SKY...");
+
+      await new Promise((resolve) => setTimeout(resolve, 520));
+
+      fadeLayer.classList.add("is-visible");
+      await new Promise((resolve) => setTimeout(resolve, 740));
+
+      miniGame.classList.add("is-fading");
+      sceneFrame.style.opacity = "1";
+
+      await new Promise((resolve) => setTimeout(resolve, 320));
+      fadeLayer.classList.remove("is-visible");
+      miniGame.style.display = "none";
+    });
+  </script>
+</body>
+</html>
