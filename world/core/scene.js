@@ -168,8 +168,8 @@ export function createSkySphere() {
       void main() {
         float y = clamp(vWorldDir.y * 0.5 + 0.5, 0.0, 1.0);
 
-        float lowerMix = smoothstep(0.02, 0.36, pow(y, 1.7));
-        float upperMix = smoothstep(0.34, 0.86, pow(y, 1.32));
+        float lowerMix = smoothstep(0.00, 0.48, pow(y, 1.62));
+        float upperMix = smoothstep(0.24, 0.94, pow(y, 1.24));
 
         vec3 lowerGradient = mix(horizonColor, midColor, lowerMix);
         vec3 skyColor = mix(lowerGradient, zenithColor, upperMix);

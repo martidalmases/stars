@@ -209,17 +209,11 @@ export class StoryStarSystem {
 
     this.lines = [];
 
-    this.idleHintDelay = 5.0;
-    this.idleTimer = 0;
-    this.hintPulse = 0;
-    this.hintRing = null;
-    this.loggedIdleHintForStarIndex = null;
   }
 
   init() {
     console.log("[StoryStars] Initializing story stars...");
     this._createStars();
-    this._createIdleHint();
     this._setupInput();
 
     if (this.stars.length > 0) {
@@ -258,26 +252,6 @@ export class StoryStarSystem {
     window.addEventListener("click", () => this._handleClick());
   }
 
-  _createIdleHint() {
-    const geo = new THREE.RingGeometry(4.2, 4.7, 48);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xc8dcff,
-      transparent: true,
-      opacity: 0,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    });
-
-    this.hintRing = new THREE.Mesh(geo, mat);
-    this.hintRing.visible = false;
-    this.hintRing.renderOrder = 4;
-    this.scene.add(this.hintRing);
-  }
-
-  _getSelectedStar() {
-    return this.stars.find((star) => star.state === STORY_STATE.SELECTED) || null;
-  }
 
   // ==============================
   // Cone-based selection
@@ -320,16 +294,6 @@ export class StoryStarSystem {
     console.log(`[StoryStars] Click handled for star #${star.index}`);
 
     star.setState(STORY_STATE.CLICKED);
-    this.idleTimer = 0;
-    this.hintPulse = 0;
-    this.loggedIdleHintForStarIndex = null;
-
-    if (this.hintRing) {
-      this.hintRing.visible = false;
-      this.hintRing.material.opacity = 0;
-    }
-
-
     const next = this.stars[star.index + 1];
 
     if (next) next.setState(STORY_STATE.SELECTED);
@@ -382,41 +346,6 @@ export class StoryStarSystem {
     const dt = 0.016;
 
     const active = this._getStarInCone();
-    const selected = this._getSelectedStar();
-
-    if (selected) {
-      this.idleTimer += dt;
-    } else {
-      this.idleTimer = 0;
-    }
-
-    if (this.hintRing && selected && this.idleTimer > this.idleHintDelay) {
-      if (this.loggedIdleHintForStarIndex !== selected.index) {
-        console.log(`[StoryStars] Idle hint triggered for star #${selected.index} after ${this.idleHintDelay.toFixed(1)}s`);
-        this.loggedIdleHintForStarIndex = selected.index;
-      }
-
-      this.hintPulse += dt;
-      const cycle = this.hintPulse % 1.2;
-      const t = cycle / 1.2;
-      const ease = 1.0 - Math.pow(1.0 - t, 2.0);
-
-      this.hintRing.visible = true;
-      this.hintRing.position.copy(selected.position);
-      this.hintRing.lookAt(this.camera.position);
-
-      const scale = 0.9 + ease * 3.0;
-      this.hintRing.scale.setScalar(scale);
-      this.hintRing.material.opacity = (1.0 - t) * 0.24;
-    } else if (this.hintRing) {
-      this.hintPulse = 0;
-      this.hintRing.visible = false;
-      this.hintRing.material.opacity = 0;
-
-      if (!selected) {
-        this.loggedIdleHintForStarIndex = null;
-      }
-    }
 
     this.stars.forEach((star) => {
 
