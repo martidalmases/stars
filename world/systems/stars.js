@@ -22,6 +22,7 @@ class StoryStar {
 
     // Sizes
     this.baseSize = 8;
+    this.selectedSize = this.baseSize * 4.6;
     this.currentSize = this.baseSize;
     this.targetSize = this.baseSize;
 
@@ -130,7 +131,7 @@ class StoryStar {
 
       case STORY_STATE.SELECTED:
 
-        this.targetSize = this.baseSize * 4.6;
+        this.targetSize = this.selectedSize;
         this.material.uniforms.opacity.value = 1.2;
         this.material.uniforms.color.value.set(0xfff1cf);
 
@@ -150,9 +151,14 @@ class StoryStar {
     if (this.state !== STORY_STATE.SELECTED) return;
 
     this.targetSize =
-      this.baseSize * (4.4 + strength * 1.8);
+      this.selectedSize + this.baseSize * (strength * 1.8);
 
     this.material.uniforms.color.value.lerp(this.highlightColor, 0.16);
+  }
+
+  onLookAway() {
+    if (this.state !== STORY_STATE.SELECTED) return;
+    this.targetSize = this.selectedSize;
   }
 
   update() {
@@ -203,10 +209,11 @@ export class StoryStarSystem {
 
     this.lines = [];
 
-    this.idleHintDelay = 5.5;
+    this.idleHintDelay = 5.0;
     this.idleTimer = 0;
     this.hintPulse = 0;
     this.hintRing = null;
+    this.loggedIdleHintForStarIndex = null;
   }
 
   init() {
@@ -315,6 +322,7 @@ export class StoryStarSystem {
     star.setState(STORY_STATE.CLICKED);
     this.idleTimer = 0;
     this.hintPulse = 0;
+    this.loggedIdleHintForStarIndex = null;
 
     if (this.hintRing) {
       this.hintRing.visible = false;
@@ -383,6 +391,11 @@ export class StoryStarSystem {
     }
 
     if (this.hintRing && selected && this.idleTimer > this.idleHintDelay) {
+      if (this.loggedIdleHintForStarIndex !== selected.index) {
+        console.log(`[StoryStars] Idle hint triggered for star #${selected.index} after ${this.idleHintDelay.toFixed(1)}s`);
+        this.loggedIdleHintForStarIndex = selected.index;
+      }
+
       this.hintPulse += dt;
       const cycle = this.hintPulse % 1.2;
       const t = cycle / 1.2;
@@ -399,6 +412,10 @@ export class StoryStarSystem {
       this.hintPulse = 0;
       this.hintRing.visible = false;
       this.hintRing.material.opacity = 0;
+
+      if (!selected) {
+        this.loggedIdleHintForStarIndex = null;
+      }
     }
 
     this.stars.forEach((star) => {
@@ -408,6 +425,8 @@ export class StoryStarSystem {
         star.state === STORY_STATE.SELECTED
       ) {
         star.onLookAt(1);
+      } else if (star.state === STORY_STATE.SELECTED) {
+        star.onLookAway();
       }
 
       star.update();
