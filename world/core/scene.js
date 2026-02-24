@@ -5,7 +5,7 @@ export function createScene() {
   return scene;
 }
 
-function createBackgroundStarField(radius = 980, count = 3200) {
+function createBackgroundStarField(radius = 980, count = 2500) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
@@ -46,22 +46,22 @@ function createBackgroundStarField(radius = 980, count = 3200) {
     const tempRoll = Math.random();
     const starColor = new THREE.Color();
 
-    if (tempRoll < 0.18) {
-      starColor.set(0x9bbcff); // cool blue
-    } else if (tempRoll < 0.85) {
-      starColor.set(0xf5f7ff); // white
+    if (tempRoll < 0.12) {
+      starColor.set(0xcfd9ff);
+    } else if (tempRoll < 0.92) {
+      starColor.set(0xf3f5ff);
     } else {
-      starColor.set(0xffe3ba); // warm
+      starColor.set(0xfff0dd);
     }
 
-    const luminosity = Math.pow(Math.random(), 2.4);
-    const size = 1.6 + Math.pow(Math.random(), 3.0) * 5.2;
+    const luminosity = Math.pow(Math.random(), 2.35);
+    const size = 2.25 + Math.pow(Math.random(), 2.8) * 4.8;
 
     colors[i * 3] = starColor.r;
     colors[i * 3 + 1] = starColor.g;
     colors[i * 3 + 2] = starColor.b;
     sizes[i] = size;
-    luminosities[i] = 0.28 + luminosity * 1.45;
+    luminosities[i] = 0.28 + luminosity * 1.35;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -94,7 +94,7 @@ function createBackgroundStarField(radius = 980, count = 3200) {
         vLuminosity = aLuminosity;
         vSize = aSize;
 
-        gl_PointSize = max(1.2, aSize * aLuminosity * (330.0 / depth));
+        gl_PointSize = max(1.85, aSize * aLuminosity * (360.0 / depth));
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
@@ -117,8 +117,8 @@ function createBackgroundStarField(radius = 980, count = 3200) {
         float spikeY = exp(-120.0 * uv.y * uv.y) * exp(-3.0 * uv.x * uv.x);
         float diagonal = exp(-85.0 * (uv.x + uv.y) * (uv.x + uv.y)) * exp(-6.0 * (uv.x - uv.y) * (uv.x - uv.y));
 
-        float glare = (spikeX + spikeY + diagonal * 0.55) * clamp(vSize / 4.8, 0.06, 0.55) * glareBoost;
-        float alpha = (core * 1.35 + halo * 0.62 + glare * 0.95) * vLuminosity;
+        float glare = (spikeX + spikeY + diagonal * 0.55) * clamp(vSize / 4.8, 0.06, 0.52) * glareBoost;
+        float alpha = (core * 1.3 + halo * 0.58 + glare * 0.9) * vLuminosity;
 
         gl_FragColor = vec4(vColor, clamp(alpha, 0.0, 1.0));
       }

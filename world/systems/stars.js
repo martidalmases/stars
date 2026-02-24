@@ -26,9 +26,9 @@ class StoryStar {
     this.targetSize = this.baseSize;
 
     // Colors
-    this.baseColor = new THREE.Color(0xf9fbff);
-    this.highlightColor = new THREE.Color(0xffeea6);
-    this.clickedColor = new THREE.Color(0xffa44d);
+    this.baseColor = new THREE.Color(0xf3f5ff);
+    this.highlightColor = new THREE.Color(0xffefc7);
+    this.clickedColor = new THREE.Color(0xffc88d);
 
     this.material = null;
     this.mesh = null;
@@ -62,8 +62,8 @@ class StoryStar {
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float depth = max(1.0, abs(mvPosition.z));
-          float pulse = 1.0 + sin(time * (0.9 + fract(seed) * 0.6) + seed) * 0.04;
-          gl_PointSize = max(2.5, size * pulse * (340.0 / depth));
+          float pulse = 1.0 + sin(time * (0.9 + fract(seed) * 0.6) + seed) * 0.03;
+          gl_PointSize = max(1.85, size * pulse * (360.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
           vSize = size;
@@ -85,19 +85,21 @@ class StoryStar {
 
           if (radius > 1.0) discard;
 
-          float core = exp(-16.0 * radius * radius);
-          float halo = exp(-5.5 * radius * radius);
-          float spikeX = exp(-95.0 * uv.x * uv.x) * exp(-4.5 * uv.y * uv.y);
-          float spikeY = exp(-95.0 * uv.y * uv.y) * exp(-4.5 * uv.x * uv.x);
-          float glareStrength = clamp(vSize / 16.0, 0.08, 0.4);
-          float glare = (spikeX + spikeY) * glareStrength;
+          float core = exp(-20.0 * radius * radius);
+          float halo = exp(-5.0 * radius * radius);
+          float spikeX = exp(-120.0 * uv.x * uv.x) * exp(-3.0 * uv.y * uv.y);
+          float spikeY = exp(-120.0 * uv.y * uv.y) * exp(-3.0 * uv.x * uv.x);
+          float diagonal = exp(-85.0 * (uv.x + uv.y) * (uv.x + uv.y)) * exp(-6.0 * (uv.x - uv.y) * (uv.x - uv.y));
 
-          float nearBoost = mix(1.25, 0.95, clamp(vDepth / 1600.0, 0.0, 1.0));
-          float alpha = (core * 1.35 + halo * 0.95 + glare * 0.55) * opacity * vOpacity * nearBoost * vPulse;
+          float glareStrength = clamp(vSize / 4.8, 0.06, 0.52);
+          float glare = (spikeX + spikeY + diagonal * 0.55) * glareStrength;
+
+          float nearBoost = mix(1.18, 0.96, clamp(vDepth / 1600.0, 0.0, 1.0));
+          float alpha = (core * 1.3 + halo * 0.58 + glare * 0.9) * opacity * vOpacity * nearBoost * vPulse;
 
           if (alpha <= 0.0) discard;
 
-          gl_FragColor = vec4(color, alpha);
+          gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
         }
       `,
       transparent: true,
@@ -121,23 +123,23 @@ class StoryStar {
       case STORY_STATE.STANDBY:
 
         this.targetSize = this.baseSize;
-        this.material.uniforms.opacity.value = 0.95;
+        this.material.uniforms.opacity.value = 0.9;
         this.material.uniforms.color.value.copy(this.baseColor);
 
         break;
 
       case STORY_STATE.SELECTED:
 
-        this.targetSize = this.baseSize * 4.8;
-        this.material.uniforms.opacity.value = 1.25;
-        this.material.uniforms.color.value.set(0xfff1b8);
+        this.targetSize = this.baseSize * 4.6;
+        this.material.uniforms.opacity.value = 1.2;
+        this.material.uniforms.color.value.set(0xfff1cf);
 
         break;
 
       case STORY_STATE.CLICKED:
 
-        this.targetSize = this.baseSize * 2.3;
-        this.material.uniforms.opacity.value = 1.1;
+        this.targetSize = this.baseSize * 2.2;
+        this.material.uniforms.opacity.value = 1.0;
         this.material.uniforms.color.value.copy(this.clickedColor);
 
         break;
@@ -148,9 +150,9 @@ class StoryStar {
     if (this.state !== STORY_STATE.SELECTED) return;
 
     this.targetSize =
-      this.baseSize * (4.6 + strength * 1.8);
+      this.baseSize * (4.4 + strength * 1.8);
 
-    this.material.uniforms.color.value.lerp(this.highlightColor, 0.2);
+    this.material.uniforms.color.value.lerp(this.highlightColor, 0.16);
   }
 
   update() {
@@ -225,10 +227,10 @@ export class StoryStarSystem {
       const star = new StoryStar(i, pos);
 
       const tintRoll = Math.random();
-      if (tintRoll < 0.33) {
-        star.baseColor.set(0xd9e8ff);
-      } else if (tintRoll > 0.78) {
-        star.baseColor.set(0xffe7bd);
+      if (tintRoll < 0.18) {
+        star.baseColor.set(0xdbe4ff);
+      } else if (tintRoll > 0.9) {
+        star.baseColor.set(0xffefd9);
       }
 
       const mesh = star.create();
@@ -308,16 +310,20 @@ export class StoryStarSystem {
 
         if (this.lines[i]) continue;
 
+        const segment = new THREE.Vector3().subVectors(b.position, a.position);
+        const mid = a.position.clone().add(b.position).multiplyScalar(0.5);
+        const up = mid.clone().normalize();
+        const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.11));
 
-        const points = [a.position, b.position];
+        const curve = new THREE.QuadraticBezierCurve3(a.position, control, b.position);
+        const points = curve.getPoints(28);
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
 
-        const geo =
-          new THREE.BufferGeometry().setFromPoints(points);
-
+        const opacity = 0.26 + Math.min(0.24, segment.length() / 900.0);
         const mat = new THREE.LineBasicMaterial({
-          color: 0xffffff,
+          color: 0xcfd9ef,
           transparent: true,
-          opacity: 0.8
+          opacity
         });
 
         const line = new THREE.Line(geo, mat);
