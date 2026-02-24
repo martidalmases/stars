@@ -288,22 +288,23 @@ export class StoryStarSystem {
         const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.11));
 
         const curve = new THREE.QuadraticBezierCurve3(a.position, control, b.position);
-        const tubeGeo = new THREE.TubeGeometry(curve, 24, 0.68, 8, false);
+        const points = curve.getPoints(28);
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
 
-        const opacity = 0.18 + Math.min(0.16, segment.length() / 900.0);
-        const mat = new THREE.MeshBasicMaterial({
+        const opacity = 0.26 + Math.min(0.24, segment.length() / 900.0);
+        const mat = new THREE.LineBasicMaterial({
           color: 0xcfd9ef,
           transparent: true,
           opacity,
-          depthWrite: false
+          linewidth: 2
         });
 
-        const link = new THREE.Mesh(tubeGeo, mat);
-        link.frustumCulled = false;
-        link.renderOrder = 3;
+        const line = new THREE.Line(geo, mat);
+        line.frustumCulled = false;
+        line.renderOrder = 3;
 
-        this.scene.add(link);
-        this.lines[i] = link;
+        this.scene.add(line);
+        this.lines[i] = line;
       }
     }
   }

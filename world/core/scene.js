@@ -151,9 +151,7 @@ export function createSkySphere() {
       horizonColor: { value: new THREE.Color(0x101a2c) },
       midColor: { value: new THREE.Color(0x081126) },
       zenithColor: { value: new THREE.Color(0x010205) },
-      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) },
-      milkyWayColor: { value: new THREE.Color(0x4d5f88) },
-      time: { value: 0.0 }
+      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) }
     },
     vertexShader: `
       varying vec3 vWorldDir;
@@ -169,8 +167,6 @@ export function createSkySphere() {
       uniform vec3 midColor;
       uniform vec3 zenithColor;
       uniform vec3 pollutionBandColor;
-      uniform vec3 milkyWayColor;
-      uniform float time;
       varying vec3 vWorldDir;
 
       float hash(vec3 p) {
@@ -188,12 +184,6 @@ export function createSkySphere() {
 
         float horizonBand = exp(-pow(abs(vWorldDir.y) / 0.085, 2.0));
         skyColor += pollutionBandColor * horizonBand * 0.14;
-
-        vec3 mwAxis = normalize(vec3(0.24, 0.94, -0.23));
-        float plane = abs(dot(vWorldDir, mwAxis));
-        float milkyBand = exp(-pow(plane / 0.18, 2.0));
-        float mwNoise = hash(vWorldDir * 140.0 + time * 0.01) * 0.55 + hash(vWorldDir.zyx * 210.0) * 0.45;
-        skyColor += milkyWayColor * milkyBand * mwNoise * 0.07;
 
         float nA = hash(vWorldDir * 210.0);
         float nB = hash(vWorldDir.zyx * 390.0);
@@ -216,7 +206,6 @@ export function createSkySphere() {
   skyGroup.add(backgroundStars);
 
   skyGroup.userData.update = (delta = 0.016) => {
-    nightGradientMat.uniforms.time.value += delta;
     backgroundStars.material.uniforms.time.value += delta;
   };
 
