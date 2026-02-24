@@ -49,7 +49,8 @@ class StoryStar {
         opacity: { value: 1.0 },
         size: { value: this.baseSize },
         time: { value: 0.0 },
-        seed: { value: (this.index + 1) * 13.371 }
+        seed: { value: (this.index + 1) * 13.371 },
+        hint: { value: 0.0 }
       },
       vertexShader: `
         uniform float size;
@@ -75,6 +76,7 @@ class StoryStar {
       fragmentShader: `
         uniform vec3 color;
         uniform float opacity;
+        uniform float hint;
         varying float vOpacity;
         varying float vSize;
         varying float vDepth;
@@ -96,11 +98,13 @@ class StoryStar {
           float glare = (spikeX + spikeY + diagonal * 0.55) * glareStrength;
 
           float nearBoost = mix(1.18, 0.96, clamp(vDepth / 1600.0, 0.0, 1.0));
-          float alpha = (core * 1.3 + halo * 0.58 + glare * 0.9) * opacity * vOpacity * nearBoost * vPulse;
+          float hintHalo = exp(-2.6 * radius * radius) * hint * 0.65;
+          float alpha = (core * 1.3 + halo * (0.58 + hint * 0.35) + glare * (0.9 + hint * 0.4) + hintHalo) * opacity * vOpacity * nearBoost * vPulse;
 
           if (alpha <= 0.0) discard;
 
-          gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
+          vec3 hintColor = mix(color, vec3(0.86, 0.92, 1.0), hint * 0.24);
+          gl_FragColor = vec4(hintColor, clamp(alpha, 0.0, 1.0));
         }
       `,
       transparent: true,
@@ -126,6 +130,7 @@ class StoryStar {
         this.targetSize = this.baseSize;
         this.material.uniforms.opacity.value = 0.9;
         this.material.uniforms.color.value.copy(this.baseColor);
+        this.material.uniforms.hint.value = 0.0;
 
         break;
 
@@ -134,6 +139,7 @@ class StoryStar {
         this.targetSize = this.selectedSize;
         this.material.uniforms.opacity.value = 1.2;
         this.material.uniforms.color.value.set(0xfff1cf);
+        this.material.uniforms.hint.value = 0.0;
 
         break;
 
@@ -142,6 +148,7 @@ class StoryStar {
         this.targetSize = this.baseSize * 2.2;
         this.material.uniforms.opacity.value = 1.0;
         this.material.uniforms.color.value.copy(this.clickedColor);
+        this.material.uniforms.hint.value = 0.0;
 
         break;
     }
@@ -159,6 +166,11 @@ class StoryStar {
   onLookAway() {
     if (this.state !== STORY_STATE.SELECTED) return;
     this.targetSize = this.selectedSize;
+  }
+
+  setHint(strength = 0) {
+    if (!this.material) return;
+    this.material.uniforms.hint.value = THREE.MathUtils.clamp(strength, 0, 1);
   }
 
   update() {
@@ -208,6 +220,11 @@ export class StoryStarSystem {
     this.coneAngle = THREE.MathUtils.degToRad(18);
 
     this.lines = [];
+    this.hintDelay = 6.0;
+    this.selectedIdleTime = 0;
+    this.hintTime = 0;
+    this.hasLookedAtSelected = false;
+    this.lastSelectedIndex = -1;
 
   }
 
@@ -252,6 +269,10 @@ export class StoryStarSystem {
     window.addEventListener("click", () => this._handleClick());
   }
 
+
+  _getSelectedStar() {
+    return this.stars.find((star) => star.state === STORY_STATE.SELECTED) || null;
+  }
 
   // ==============================
   // Cone-based selection
@@ -341,11 +362,46 @@ export class StoryStarSystem {
     }
   }
 
+
   update() {
 
     const dt = 0.016;
 
     const active = this._getStarInCone();
+    const selected = this._getSelectedStar();
+
+    if (selected) {
+      if (selected.index != this.lastSelectedIndex) {
+        this.lastSelectedIndex = selected.index;
+        this.selectedIdleTime = 0;
+        this.hintTime = 0;
+        this.hasLookedAtSelected = false;
+        selected.setHint(0);
+      }
+
+      if (active === selected) {
+        this.hasLookedAtSelected = true;
+        this.selectedIdleTime = 0;
+        this.hintTime = 0;
+        selected.setHint(0);
+      } else if (!this.hasLookedAtSelected) {
+        this.selectedIdleTime += dt;
+        if (this.selectedIdleTime >= this.hintDelay) {
+          this.hintTime += dt;
+          const pulse = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(this.hintTime * 3.1));
+          selected.setHint(pulse);
+        } else {
+          selected.setHint(0);
+        }
+      } else {
+        selected.setHint(0);
+      }
+    } else {
+      this.lastSelectedIndex = -1;
+      this.selectedIdleTime = 0;
+      this.hintTime = 0;
+      this.hasLookedAtSelected = false;
+    }
 
     this.stars.forEach((star) => {
 
@@ -356,6 +412,8 @@ export class StoryStarSystem {
         star.onLookAt(1);
       } else if (star.state === STORY_STATE.SELECTED) {
         star.onLookAway();
+      } else {
+        star.setHint(0);
       }
 
       star.update();
