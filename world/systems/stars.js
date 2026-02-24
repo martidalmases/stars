@@ -47,7 +47,8 @@ class StoryStar {
         opacity: { value: 1.0 },
         size: { value: this.baseSize },
         time: { value: 0.0 },
-        seed: { value: (this.index + 1) * 13.371 }
+        seed: { value: (this.index + 1) * 13.371 },
+        pulseBoost: { value: 0.0 }
       },
       vertexShader: `
         uniform float size;
@@ -73,6 +74,7 @@ class StoryStar {
       fragmentShader: `
         uniform vec3 color;
         uniform float opacity;
+        uniform float pulseBoost;
         varying float vOpacity;
         varying float vSize;
         varying float vDepth;
@@ -94,11 +96,13 @@ class StoryStar {
           float glare = (spikeX + spikeY + diagonal * 0.55) * glareStrength;
 
           float nearBoost = mix(1.18, 0.96, clamp(vDepth / 1600.0, 0.0, 1.0));
-          float alpha = (core * 1.3 + halo * 0.58 + glare * 0.9) * opacity * vOpacity * nearBoost * vPulse;
+          float pulseHalo = exp(-3.0 * radius * radius) * pulseBoost * 0.7;
+          float alpha = (core * 1.3 + halo * (0.58 + pulseBoost * 0.25) + glare * (0.9 + pulseBoost * 0.35) + pulseHalo) * opacity * vOpacity * nearBoost * vPulse;
 
           if (alpha <= 0.0) discard;
 
-          gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
+          vec3 pulseColor = mix(color, vec3(0.90, 0.94, 1.0), pulseBoost * 0.18);
+          gl_FragColor = vec4(pulseColor, clamp(alpha, 0.0, 1.0));
         }
       `,
       transparent: true,
@@ -123,18 +127,21 @@ class StoryStar {
         this.targetSize = this.baseSize;
         this.material.uniforms.opacity.value = 0.9;
         this.material.uniforms.color.value.copy(this.baseColor);
+        this.material.uniforms.pulseBoost.value = 0.0;
         break;
 
       case STORY_STATE.SELECTED:
         this.targetSize = this.selectedSize;
         this.material.uniforms.opacity.value = 1.2;
         this.material.uniforms.color.value.set(0xfff1cf);
+        this.material.uniforms.pulseBoost.value = 0.0;
         break;
 
       case STORY_STATE.CLICKED:
         this.targetSize = this.baseSize * 2.2;
         this.material.uniforms.opacity.value = 1.0;
         this.material.uniforms.color.value.copy(this.clickedColor);
+        this.material.uniforms.pulseBoost.value = 0.0;
         break;
     }
   }
@@ -149,6 +156,11 @@ class StoryStar {
   onLookAway() {
     if (this.state !== STORY_STATE.SELECTED) return;
     this.targetSize = this.selectedSize;
+  }
+
+  setPulse(strength = 0) {
+    if (!this.material) return;
+    this.material.uniforms.pulseBoost.value = THREE.MathUtils.clamp(strength, 0, 1);
   }
 
   update() {
@@ -197,6 +209,7 @@ export class StoryStarSystem {
     this.selectedIdleTime = 0;
     this.lastSelectedIndex = -1;
     this.showClickHint = false;
+        this.selectionPulseTime = 0;
   }
 
   init() {
@@ -281,6 +294,7 @@ export class StoryStarSystem {
 
     star.setState(STORY_STATE.CLICKED);
     this.showClickHint = false;
+    this.selectionPulseTime = 0;
     this.selectedIdleTime = 0;
 
     const next = this.stars[star.index + 1];
@@ -326,6 +340,7 @@ export class StoryStarSystem {
 
   update() {
     const dt = 0.016;
+    this.selectionPulseTime += dt;
 
     const active = this._getStarInCone();
     const selected = this._getSelectedStar();
@@ -335,11 +350,13 @@ export class StoryStarSystem {
         this.lastSelectedIndex = selected.index;
         this.selectedIdleTime = 0;
         this.showClickHint = false;
+        this.selectionPulseTime = 0;
       }
 
       if (active === selected) {
         this.selectedIdleTime = 0;
         this.showClickHint = false;
+        this.selectionPulseTime = 0;
       } else {
         this.selectedIdleTime += dt;
         this.showClickHint = this.selectedIdleTime >= this.hintDelay;
@@ -348,6 +365,7 @@ export class StoryStarSystem {
       this.lastSelectedIndex = -1;
       this.selectedIdleTime = 0;
       this.showClickHint = false;
+      this.selectionPulseTime = 0;
     }
 
     this.stars.forEach((star) => {
@@ -355,6 +373,13 @@ export class StoryStarSystem {
         star.onLookAt(1);
       } else if (star.state === STORY_STATE.SELECTED) {
         star.onLookAway();
+      }
+
+      if (star.state === STORY_STATE.SELECTED) {
+        const pulse = 0.22 + 0.78 * (0.5 + 0.5 * Math.sin(this.selectionPulseTime * 2.6 + star.index * 0.7));
+        star.setPulse(pulse);
+      } else {
+        star.setPulse(0);
       }
 
       star.update();

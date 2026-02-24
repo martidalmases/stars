@@ -198,16 +198,16 @@ export function createSkySphere() {
         float noise = (nA * 0.65 + nB * 0.35) - 0.5;
         skyColor += noise * 0.018;
 
-        vec2 cloudUv = vWorldDir.xz * 3.8 + vec2(time * 0.0025, -time * 0.0015);
+        vec2 cloudUv = vWorldDir.xz * 4.6 + vec2(time * 0.0038, -time * 0.0022);
         float cloud = noise2(cloudUv);
-        cloud += noise2(cloudUv * 1.9 + vec2(4.2, -2.7)) * 0.55;
-        cloud += noise2(cloudUv * 3.6 - vec2(7.3, 1.6)) * 0.25;
+        cloud += noise2(cloudUv * 2.0 + vec2(4.2, -2.7)) * 0.62;
+        cloud += noise2(cloudUv * 3.8 - vec2(7.3, 1.6)) * 0.34;
         cloud /= 1.8;
 
-        float cloudShape = smoothstep(0.58, 0.74, cloud);
-        float highMask = smoothstep(0.42, 0.88, y) * (1.0 - smoothstep(0.9, 1.0, y));
-        vec3 cloudTint = mix(vec3(0.19, 0.24, 0.34), vec3(0.28, 0.31, 0.38), y);
-        skyColor = mix(skyColor, skyColor + cloudTint * 0.22, cloudShape * highMask * 0.5);
+        float cloudShape = smoothstep(0.52, 0.72, cloud);
+        float highMask = smoothstep(0.34, 0.86, y) * (1.0 - smoothstep(0.93, 1.0, y));
+        vec3 cloudTint = mix(vec3(0.22, 0.28, 0.4), vec3(0.32, 0.35, 0.44), y);
+        skyColor = mix(skyColor, skyColor + cloudTint * 0.34, cloudShape * highMask * 0.78);
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
