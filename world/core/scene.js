@@ -143,7 +143,8 @@ export function createSkySphere() {
       horizonColor: { value: new THREE.Color(0x101a2c) },
       midColor: { value: new THREE.Color(0x081126) },
       zenithColor: { value: new THREE.Color(0x010205) },
-      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) }
+      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) },
+      time: { value: 0.0 }
     },
     vertexShader: `
       varying vec3 vWorldDir;
@@ -159,11 +160,26 @@ export function createSkySphere() {
       uniform vec3 midColor;
       uniform vec3 zenithColor;
       uniform vec3 pollutionBandColor;
+      uniform float time;
       varying vec3 vWorldDir;
 
       float hash(vec3 p) {
         return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
       }
+
+      float noise2(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+
+        float a = hash(vec3(i, 0.0));
+        float b = hash(vec3(i + vec2(1.0, 0.0), 0.0));
+        float c = hash(vec3(i + vec2(0.0, 1.0), 0.0));
+        float d = hash(vec3(i + vec2(1.0, 1.0), 0.0));
+
+        return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+      }
+
 
       void main() {
         float y = clamp(vWorldDir.y * 0.5 + 0.5, 0.0, 1.0);
@@ -182,6 +198,17 @@ export function createSkySphere() {
         float noise = (nA * 0.65 + nB * 0.35) - 0.5;
         skyColor += noise * 0.018;
 
+        vec2 cloudUv = vWorldDir.xz * 3.8 + vec2(time * 0.0025, -time * 0.0015);
+        float cloud = noise2(cloudUv);
+        cloud += noise2(cloudUv * 1.9 + vec2(4.2, -2.7)) * 0.55;
+        cloud += noise2(cloudUv * 3.6 - vec2(7.3, 1.6)) * 0.25;
+        cloud /= 1.8;
+
+        float cloudShape = smoothstep(0.58, 0.74, cloud);
+        float highMask = smoothstep(0.42, 0.88, y) * (1.0 - smoothstep(0.9, 1.0, y));
+        vec3 cloudTint = mix(vec3(0.19, 0.24, 0.34), vec3(0.28, 0.31, 0.38), y);
+        skyColor = mix(skyColor, skyColor + cloudTint * 0.22, cloudShape * highMask * 0.5);
+
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
     `
@@ -194,6 +221,10 @@ export function createSkySphere() {
   const skyGroup = new THREE.Group();
   skyGroup.add(sky);
   skyGroup.add(createBackgroundStarField());
+
+  skyGroup.userData.update = (dt) => {
+    nightGradientMat.uniforms.time.value += dt;
+  };
 
   console.log("[Sky] Sky dome ready with layered gradient and procedural star field.");
   return skyGroup;
