@@ -62,7 +62,7 @@ class StoryStar {
         void main() {
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
           float depth = max(1.0, abs(mvPosition.z));
-          float pulse = 1.0 + sin(time * (0.9 + fract(seed) * 0.6) + seed) * 0.03;
+          float pulse = 1.0 + sin(time * (0.85 + fract(seed) * 0.55) + seed) * 0.03;
           gl_PointSize = max(1.85, size * pulse * (360.0 / depth));
           gl_Position = projectionMatrix * mvPosition;
           vOpacity = 1.0;
@@ -121,27 +121,21 @@ class StoryStar {
 
     switch (state) {
       case STORY_STATE.STANDBY:
-
         this.targetSize = this.baseSize;
         this.material.uniforms.opacity.value = 0.9;
         this.material.uniforms.color.value.copy(this.baseColor);
-
         break;
 
       case STORY_STATE.SELECTED:
-
-        this.targetSize = this.baseSize * 4.6;
+        this.targetSize = this.baseSize * 5.2;
         this.material.uniforms.opacity.value = 1.2;
         this.material.uniforms.color.value.set(0xfff1cf);
-
         break;
 
       case STORY_STATE.CLICKED:
-
-        this.targetSize = this.baseSize * 2.2;
+        this.targetSize = this.baseSize * 2.3;
         this.material.uniforms.opacity.value = 1.0;
         this.material.uniforms.color.value.copy(this.clickedColor);
-
         break;
     }
   }
@@ -149,15 +143,11 @@ class StoryStar {
   onLookAt(strength = 0) {
     if (this.state !== STORY_STATE.SELECTED) return;
 
-    this.targetSize =
-      this.baseSize * (4.4 + strength * 1.8);
-
-    this.material.uniforms.color.value.lerp(this.highlightColor, 0.16);
+    this.targetSize = this.baseSize * (6.2 + strength * 2.6);
+    this.material.uniforms.color.value.lerp(this.highlightColor, 0.18);
   }
 
   update() {
-
-    // Smooth size
     this.currentSize = THREE.MathUtils.lerp(
       this.currentSize,
       this.targetSize,
@@ -167,8 +157,6 @@ class StoryStar {
     this.material.uniforms.size.value = this.currentSize;
     this.material.uniforms.time.value += 0.016;
 
-
-    // Smooth color reset
     if (this.state === STORY_STATE.SELECTED) {
       this.material.uniforms.color.value.lerp(this.baseColor, 0.02);
     }
@@ -218,7 +206,6 @@ export class StoryStarSystem {
 
   _createStars() {
     this.coordinates.forEach((dir, i) => {
-
       const pos = dir
         .clone()
         .multiplyScalar(this.clusterScale)
@@ -234,9 +221,7 @@ export class StoryStarSystem {
       }
 
       const mesh = star.create();
-
       this.scene.add(mesh);
-
       this.stars.push(star);
     });
   }
@@ -244,10 +229,6 @@ export class StoryStarSystem {
   _setupInput() {
     window.addEventListener("click", () => this._handleClick());
   }
-
-  // ==============================
-  // Cone-based selection
-  // ==============================
 
   _getStarInCone() {
     const camDir = new THREE.Vector3();
@@ -257,7 +238,6 @@ export class StoryStarSystem {
     let bestAngle = this.coneAngle;
 
     this.stars.forEach((star) => {
-
       const toStar = star.position
         .clone()
         .sub(this.camera.position)
@@ -275,31 +255,24 @@ export class StoryStarSystem {
   }
 
   _handleClick() {
-
     const star = this._getStarInCone();
 
     if (!star) return;
     if (star.state !== STORY_STATE.SELECTED) return;
-
 
     this.onStarClick(star.index, star);
     console.log(`[StoryStars] Click handled for star #${star.index}`);
 
     star.setState(STORY_STATE.CLICKED);
 
-
     const next = this.stars[star.index + 1];
-
     if (next) next.setState(STORY_STATE.SELECTED);
-
 
     this._tryDrawLine();
   }
 
   _tryDrawLine() {
-
     for (let i = 0; i < this.stars.length - 1; i++) {
-
       const a = this.stars[i];
       const b = this.stars[i + 1];
 
@@ -307,7 +280,6 @@ export class StoryStarSystem {
         a.state === STORY_STATE.CLICKED &&
         b.state === STORY_STATE.CLICKED
       ) {
-
         if (this.lines[i]) continue;
 
         const segment = new THREE.Vector3().subVectors(b.position, a.position);
@@ -316,31 +288,30 @@ export class StoryStarSystem {
         const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.11));
 
         const curve = new THREE.QuadraticBezierCurve3(a.position, control, b.position);
-        const points = curve.getPoints(28);
-        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const tubeGeo = new THREE.TubeGeometry(curve, 24, 0.68, 8, false);
 
-        const opacity = 0.26 + Math.min(0.24, segment.length() / 900.0);
-        const mat = new THREE.LineBasicMaterial({
+        const opacity = 0.18 + Math.min(0.16, segment.length() / 900.0);
+        const mat = new THREE.MeshBasicMaterial({
           color: 0xcfd9ef,
           transparent: true,
-          opacity
+          opacity,
+          depthWrite: false
         });
 
-        const line = new THREE.Line(geo, mat);
+        const link = new THREE.Mesh(tubeGeo, mat);
+        link.frustumCulled = false;
+        link.renderOrder = 3;
 
-        this.scene.add(line);
-
-        this.lines[i] = line;
+        this.scene.add(link);
+        this.lines[i] = link;
       }
     }
   }
 
   update() {
-
     const active = this._getStarInCone();
 
     this.stars.forEach((star) => {
-
       if (
         star === active &&
         star.state === STORY_STATE.SELECTED

@@ -10,6 +10,7 @@ function createBackgroundStarField(radius = 980, count = 2500) {
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
   const luminosities = new Float32Array(count);
+  const phases = new Float32Array(count);
 
   const axis = new THREE.Vector3(0.28, 0.9, -0.22).normalize();
 
@@ -62,6 +63,7 @@ function createBackgroundStarField(radius = 980, count = 2500) {
     colors[i * 3 + 2] = starColor.b;
     sizes[i] = size;
     luminosities[i] = 0.28 + luminosity * 1.35;
+    phases[i] = Math.random() * Math.PI * 2.0;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -69,6 +71,7 @@ function createBackgroundStarField(radius = 980, count = 2500) {
   geometry.setAttribute("aColor", new THREE.BufferAttribute(colors, 3));
   geometry.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
   geometry.setAttribute("aLuminosity", new THREE.BufferAttribute(luminosities, 1));
+  geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
 
   const material = new THREE.ShaderMaterial({
     transparent: true,
@@ -76,12 +79,15 @@ function createBackgroundStarField(radius = 980, count = 2500) {
     depthTest: false,
     blending: THREE.AdditiveBlending,
     uniforms: {
-      glareBoost: { value: 1.0 }
+      glareBoost: { value: 1.0 },
+      time: { value: 0.0 }
     },
     vertexShader: `
+      uniform float time;
       attribute vec3 aColor;
       attribute float aSize;
       attribute float aLuminosity;
+      attribute float aPhase;
       varying vec3 vColor;
       varying float vLuminosity;
       varying float vSize;
@@ -90,11 +96,13 @@ function createBackgroundStarField(radius = 980, count = 2500) {
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         float depth = max(1.0, -mvPosition.z);
 
+        float twinkle = 1.0 + sin(time * (0.28 + fract(aPhase) * 0.24) + aPhase) * 0.045;
+
         vColor = aColor;
-        vLuminosity = aLuminosity;
+        vLuminosity = aLuminosity * twinkle;
         vSize = aSize;
 
-        gl_PointSize = max(1.85, aSize * aLuminosity * (360.0 / depth));
+        gl_PointSize = max(1.85, aSize * vLuminosity * (360.0 / depth));
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
@@ -143,7 +151,9 @@ export function createSkySphere() {
       horizonColor: { value: new THREE.Color(0x101a2c) },
       midColor: { value: new THREE.Color(0x081126) },
       zenithColor: { value: new THREE.Color(0x010205) },
-      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) }
+      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) },
+      milkyWayColor: { value: new THREE.Color(0x4d5f88) },
+      time: { value: 0.0 }
     },
     vertexShader: `
       varying vec3 vWorldDir;
@@ -159,6 +169,8 @@ export function createSkySphere() {
       uniform vec3 midColor;
       uniform vec3 zenithColor;
       uniform vec3 pollutionBandColor;
+      uniform vec3 milkyWayColor;
+      uniform float time;
       varying vec3 vWorldDir;
 
       float hash(vec3 p) {
@@ -177,6 +189,12 @@ export function createSkySphere() {
         float horizonBand = exp(-pow(abs(vWorldDir.y) / 0.085, 2.0));
         skyColor += pollutionBandColor * horizonBand * 0.14;
 
+        vec3 mwAxis = normalize(vec3(0.24, 0.94, -0.23));
+        float plane = abs(dot(vWorldDir, mwAxis));
+        float milkyBand = exp(-pow(plane / 0.18, 2.0));
+        float mwNoise = hash(vWorldDir * 140.0 + time * 0.01) * 0.55 + hash(vWorldDir.zyx * 210.0) * 0.45;
+        skyColor += milkyWayColor * milkyBand * mwNoise * 0.07;
+
         float nA = hash(vWorldDir * 210.0);
         float nB = hash(vWorldDir.zyx * 390.0);
         float noise = (nA * 0.65 + nB * 0.35) - 0.5;
@@ -191,9 +209,16 @@ export function createSkySphere() {
   sky.frustumCulled = false;
   sky.renderOrder = -2;
 
+  const backgroundStars = createBackgroundStarField();
+
   const skyGroup = new THREE.Group();
   skyGroup.add(sky);
-  skyGroup.add(createBackgroundStarField());
+  skyGroup.add(backgroundStars);
+
+  skyGroup.userData.update = (delta = 0.016) => {
+    nightGradientMat.uniforms.time.value += delta;
+    backgroundStars.material.uniforms.time.value += delta;
+  };
 
   console.log("[Sky] Sky dome ready with layered gradient and procedural star field.");
   return skyGroup;
