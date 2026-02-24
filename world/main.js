@@ -68,7 +68,7 @@ const updateCamera = createDreamyController(camera);
 // Sky
 // ==============================
 
-const sky = createSkySphere();
+const sky = createSkySphere(camera);
 scene.add(sky);
 
 const storyOverlay = new StoryOverlay({

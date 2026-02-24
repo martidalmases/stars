@@ -132,7 +132,7 @@ function createBackgroundStarField(radius = 980, count = 2500) {
   return stars;
 }
 
-export function createSkySphere() {
+export function createSkySphere(camera = null) {
   console.log("[Sky] Initializing night sky dome (3-color gradient + horizon haze + stars)...");
 
   const geo = new THREE.SphereGeometry(1010, 64, 64);
@@ -143,8 +143,7 @@ export function createSkySphere() {
       horizonColor: { value: new THREE.Color(0x101a2c) },
       midColor: { value: new THREE.Color(0x081126) },
       zenithColor: { value: new THREE.Color(0x010205) },
-      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) },
-      time: { value: 0.0 }
+      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) }
     },
     vertexShader: `
       varying vec3 vWorldDir;
@@ -160,26 +159,11 @@ export function createSkySphere() {
       uniform vec3 midColor;
       uniform vec3 zenithColor;
       uniform vec3 pollutionBandColor;
-      uniform float time;
       varying vec3 vWorldDir;
 
       float hash(vec3 p) {
         return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
       }
-
-      float noise2(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        vec2 u = f * f * (3.0 - 2.0 * f);
-
-        float a = hash(vec3(i, 0.0));
-        float b = hash(vec3(i + vec2(1.0, 0.0), 0.0));
-        float c = hash(vec3(i + vec2(0.0, 1.0), 0.0));
-        float d = hash(vec3(i + vec2(1.0, 1.0), 0.0));
-
-        return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-      }
-
 
       void main() {
         float y = clamp(vWorldDir.y * 0.5 + 0.5, 0.0, 1.0);
@@ -198,17 +182,6 @@ export function createSkySphere() {
         float noise = (nA * 0.65 + nB * 0.35) - 0.5;
         skyColor += noise * 0.018;
 
-        vec2 cloudUv = vWorldDir.xz * 4.6 + vec2(time * 0.0038, -time * 0.0022);
-        float cloud = noise2(cloudUv);
-        cloud += noise2(cloudUv * 2.0 + vec2(4.2, -2.7)) * 0.62;
-        cloud += noise2(cloudUv * 3.8 - vec2(7.3, 1.6)) * 0.34;
-        cloud /= 1.8;
-
-        float cloudShape = smoothstep(0.52, 0.72, cloud);
-        float highMask = smoothstep(0.34, 0.86, y) * (1.0 - smoothstep(0.93, 1.0, y));
-        vec3 cloudTint = mix(vec3(0.22, 0.28, 0.4), vec3(0.32, 0.35, 0.44), y);
-        skyColor = mix(skyColor, skyColor + cloudTint * 0.34, cloudShape * highMask * 0.78);
-
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
     `
@@ -218,14 +191,109 @@ export function createSkySphere() {
   sky.frustumCulled = false;
   sky.renderOrder = -2;
 
+  const cloudTexture = createSoftCloudTexture();
+  const cloudLayer = createCloudPlaneLayer(cloudTexture);
+
   const skyGroup = new THREE.Group();
   skyGroup.add(sky);
   skyGroup.add(createBackgroundStarField());
+  skyGroup.add(cloudLayer.group);
 
   skyGroup.userData.update = (dt) => {
-    nightGradientMat.uniforms.time.value += dt;
+    cloudLayer.update(dt, camera);
   };
 
-  console.log("[Sky] Sky dome ready with layered gradient and procedural star field.");
+  console.log("[Sky] Sky dome ready with layered gradient, procedural star field, and cloud planes.");
   return skyGroup;
+}
+
+function createSoftCloudTexture(size = 256) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, size, size);
+
+  for (let i = 0; i < 22; i += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const r = size * (0.16 + Math.random() * 0.28);
+    const g = ctx.createRadialGradient(x, y, r * 0.1, x, y, r);
+    g.addColorStop(0, "rgba(255,255,255,0.22)");
+    g.addColorStop(0.55, "rgba(220,232,255,0.10)");
+    g.addColorStop(1, "rgba(160,180,215,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function createCloudPlaneLayer(texture, count = 14) {
+  const group = new THREE.Group();
+  const clouds = [];
+
+  for (let i = 0; i < count; i += 1) {
+    const w = 180 + Math.random() * 260;
+    const h = 95 + Math.random() * 170;
+    const geo = new THREE.PlaneGeometry(w, h);
+    const mat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.18 + Math.random() * 0.12,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      color: new THREE.Color(0xb8c7df)
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.rotation.z = Math.random() * Math.PI * 2;
+
+    const base = new THREE.Vector3(
+      (Math.random() * 2 - 1) * 620,
+      250 + Math.random() * 120,
+      (Math.random() * 2 - 1) * 620
+    );
+
+    mesh.position.copy(base);
+    mesh.renderOrder = -1;
+
+    const drift = new THREE.Vector2((Math.random() * 2 - 1) * 4.5, (Math.random() * 2 - 1) * 4.5);
+    const pulseOffset = Math.random() * Math.PI * 2;
+
+    clouds.push({ mesh, base, drift, pulseOffset });
+    group.add(mesh);
+  }
+
+  const update = (dt, camera) => {
+    if (camera) {
+      group.position.x = camera.position.x;
+      group.position.z = camera.position.z;
+      group.position.y = camera.position.y + 220;
+    }
+
+    for (const cloud of clouds) {
+      cloud.base.x += cloud.drift.x * dt;
+      cloud.base.z += cloud.drift.y * dt;
+
+      if (cloud.base.x > 680) cloud.base.x = -680;
+      if (cloud.base.x < -680) cloud.base.x = 680;
+      if (cloud.base.z > 680) cloud.base.z = -680;
+      if (cloud.base.z < -680) cloud.base.z = 680;
+
+      cloud.mesh.position.x = cloud.base.x;
+      cloud.mesh.position.y = cloud.base.y;
+      cloud.mesh.position.z = cloud.base.z;
+
+      cloud.mesh.material.opacity = 0.13 + 0.12 * (0.5 + 0.5 * Math.sin(performance.now() * 0.00018 + cloud.pulseOffset));
+    }
+  };
+
+  return { group, update };
 }
