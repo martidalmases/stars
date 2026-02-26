@@ -46,6 +46,7 @@ const hint = document.getElementById("esc-hint");
 const endingOverlay = document.getElementById("ending-overlay");
 const endingTitle = document.getElementById("ending-title");
 const endingText = document.getElementById("ending-text");
+const clickStarHint = document.getElementById("click-star-hint");
 
 let hasFinishedExperience = false;
 
@@ -67,7 +68,7 @@ const updateCamera = createDreamyController(camera);
 // Sky
 // ==============================
 
-const sky = createSkySphere();
+const sky = createSkySphere(camera);
 scene.add(sky);
 
 const storyOverlay = new StoryOverlay({
@@ -164,11 +165,15 @@ last = t;
 updateCamera();
 storyStars.update();
 
+if (clickStarHint) {
+  const showHint = storyStars.shouldShowClickHint() && !storyOverlay.isOpen() && !hasFinishedExperience;
+  clickStarHint.classList.toggle("is-visible", showHint);
+}
+
 if (sky.userData.update) {
   sky.userData.update(delta);
 }
-  
-console.log(scene.children.length);
+
 renderer.render(scene, camera);
 }
 
