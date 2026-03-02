@@ -223,12 +223,12 @@ export function createSkySphere(camera = null) {
 
         float nebulaNoiseA = fbm(vWorldDir * vec3(10.0, 15.0, 10.0));
         float nebulaNoiseB = fbm(vWorldDir.zyx * vec3(13.0, 9.0, 14.0));
-        float nebulaDetail = smoothstep(0.54, 0.82, nebulaNoiseA * 0.65 + nebulaNoiseB * 0.35);
+        float nebulaDetail = smoothstep(0.46, 0.78, nebulaNoiseA * 0.65 + nebulaNoiseB * 0.35);
         float nebulaFade = smoothstep(0.1, 0.85, y) * (1.0 - horizonBand);
         float nebulaMask = (nebulaShapeA * 0.72 + nebulaShapeB * 0.28) * nebulaDetail * nebulaFade;
 
-        vec3 nebulaColor = vec3(0.17, 0.20, 0.31) * 0.6 + vec3(0.12, 0.09, 0.18) * 0.4;
-        skyColor += nebulaColor * nebulaMask * 0.12;
+        vec3 nebulaColor = vec3(0.19, 0.22, 0.35) * 0.62 + vec3(0.14, 0.10, 0.21) * 0.38;
+        skyColor += nebulaColor * nebulaMask * 0.28;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
