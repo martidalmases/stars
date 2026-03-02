@@ -216,13 +216,13 @@ export function createSkySphere(camera = null) {
         float noise = (nA * 0.65 + nB * 0.35) - 0.5;
         skyColor += noise * 0.018;
 
-        vec3 nebulaDirA = normalize(vec3(-0.46, 0.31, 0.83));
-        vec3 nebulaDirB = normalize(vec3(0.57, 0.38, 0.72));
+        vec3 nebulaDirA = normalize(vec3(0.46, 0.31, -0.83));
+        vec3 nebulaDirB = normalize(vec3(-0.57, 0.38, -0.72));
         float nebulaShapeA = pow(max(dot(vWorldDir, nebulaDirA), 0.0), 3.7);
         float nebulaShapeB = pow(max(dot(vWorldDir, nebulaDirB), 0.0), 4.4);
 
-        float nebulaNoiseA = fbm(vWorldDir * vec3(10.0, 15.0, 10.0));
-        float nebulaNoiseB = fbm(vWorldDir.zyx * vec3(13.0, 9.0, 14.0));
+        float nebulaNoiseA = fbm(vWorldDir * vec3(8.6, 12.4, 8.6));
+        float nebulaNoiseB = fbm(vWorldDir.zyx * vec3(10.8, 7.6, 11.6));
         float nebulaDetail = smoothstep(0.34, 0.72, nebulaNoiseA * 0.65 + nebulaNoiseB * 0.35);
         float nebulaFade = smoothstep(0.1, 0.85, y) * (1.0 - horizonBand);
         float nebulaMask = (nebulaShapeA * 0.66 + nebulaShapeB * 0.34) * nebulaDetail * nebulaFade;
