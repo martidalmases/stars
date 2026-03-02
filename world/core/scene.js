@@ -218,17 +218,19 @@ export function createSkySphere(camera = null) {
 
         vec3 nebulaDirA = normalize(vec3(-0.46, 0.31, 0.83));
         vec3 nebulaDirB = normalize(vec3(0.57, 0.38, 0.72));
-        float nebulaShapeA = pow(max(dot(vWorldDir, nebulaDirA), 0.0), 5.4);
-        float nebulaShapeB = pow(max(dot(vWorldDir, nebulaDirB), 0.0), 6.1);
+        float nebulaShapeA = pow(max(dot(vWorldDir, nebulaDirA), 0.0), 3.7);
+        float nebulaShapeB = pow(max(dot(vWorldDir, nebulaDirB), 0.0), 4.4);
 
         float nebulaNoiseA = fbm(vWorldDir * vec3(10.0, 15.0, 10.0));
         float nebulaNoiseB = fbm(vWorldDir.zyx * vec3(13.0, 9.0, 14.0));
-        float nebulaDetail = smoothstep(0.46, 0.78, nebulaNoiseA * 0.65 + nebulaNoiseB * 0.35);
+        float nebulaDetail = smoothstep(0.34, 0.72, nebulaNoiseA * 0.65 + nebulaNoiseB * 0.35);
         float nebulaFade = smoothstep(0.1, 0.85, y) * (1.0 - horizonBand);
-        float nebulaMask = (nebulaShapeA * 0.72 + nebulaShapeB * 0.28) * nebulaDetail * nebulaFade;
+        float nebulaMask = (nebulaShapeA * 0.66 + nebulaShapeB * 0.34) * nebulaDetail * nebulaFade;
 
-        vec3 nebulaColor = vec3(0.19, 0.22, 0.35) * 0.62 + vec3(0.14, 0.10, 0.21) * 0.38;
-        skyColor += nebulaColor * nebulaMask * 0.28;
+        vec3 nebulaColor = vec3(0.28, 0.31, 0.52) * 0.58 + vec3(0.20, 0.13, 0.34) * 0.42;
+        float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 0.68);
+        skyColor += nebulaColor * nebulaMask * 0.72;
+        skyColor += vec3(0.18, 0.16, 0.30) * nebulaCoreBoost * 0.24;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
