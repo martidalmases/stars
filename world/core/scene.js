@@ -216,21 +216,22 @@ export function createSkySphere(camera = null) {
         float noise = (nA * 0.65 + nB * 0.35) - 0.5;
         skyColor += noise * 0.018;
 
-        vec3 nebulaDirA = normalize(vec3(0.46, 0.31, -0.83));
-        vec3 nebulaDirB = normalize(vec3(-0.57, 0.38, -0.72));
-        float nebulaShapeA = pow(max(dot(vWorldDir, nebulaDirA), 0.0), 3.7);
-        float nebulaShapeB = pow(max(dot(vWorldDir, nebulaDirB), 0.0), 4.4);
+        float nebulaNoiseA = fbm(vWorldDir * vec3(6.4, 9.2, 6.4));
+        float nebulaNoiseB = fbm((vWorldDir + vec3(0.0, 0.18, 0.0)).zyx * vec3(7.8, 5.6, 8.4));
+        float azimuth = atan(vWorldDir.z, vWorldDir.x);
+        float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2);
 
-        float nebulaNoiseA = fbm(vWorldDir * vec3(8.6, 12.4, 8.6));
-        float nebulaNoiseB = fbm(vWorldDir.zyx * vec3(10.8, 7.6, 11.6));
-        float nebulaDetail = smoothstep(0.34, 0.72, nebulaNoiseA * 0.65 + nebulaNoiseB * 0.35);
-        float nebulaFade = smoothstep(0.1, 0.85, y) * (1.0 - horizonBand);
-        float nebulaMask = (nebulaShapeA * 0.66 + nebulaShapeB * 0.34) * nebulaDetail * nebulaFade;
+        float nebulaBand = smoothstep(0.1, 0.92, 1.0 - abs(vWorldDir.y));
+        float nebulaDetail = smoothstep(0.44, 0.78, nebulaNoiseA * 0.68 + nebulaNoiseB * 0.32);
+        float nebulaFade = smoothstep(0.08, 0.84, y) * (1.0 - horizonBand * 0.88);
+        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.72 + 0.28 * azimuthWrap);
 
-        vec3 nebulaColor = vec3(0.28, 0.31, 0.52) * 0.58 + vec3(0.20, 0.13, 0.34) * 0.42;
-        float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 0.68);
-        skyColor += nebulaColor * nebulaMask * 0.72;
-        skyColor += vec3(0.18, 0.16, 0.30) * nebulaCoreBoost * 0.24;
+        vec3 nebulaCool = vec3(0.13, 0.17, 0.29);
+        vec3 nebulaWarm = vec3(0.20, 0.11, 0.19);
+        vec3 nebulaColor = mix(nebulaCool, nebulaWarm, 0.35 + 0.65 * azimuthWrap);
+        float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
+        skyColor += nebulaColor * nebulaMask * 0.22;
+        skyColor += vec3(0.06, 0.07, 0.12) * nebulaCoreBoost * 0.1;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
