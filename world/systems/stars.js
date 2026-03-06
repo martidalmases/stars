@@ -209,7 +209,7 @@ export class StoryStarSystem {
     this.selectedIdleTime = 0;
     this.lastSelectedIndex = -1;
     this.showClickHint = false;
-        this.selectionPulseTime = 0;
+    this.selectionPulseTime = 0;
   }
 
   init() {
@@ -300,42 +300,71 @@ export class StoryStarSystem {
     const next = this.stars[star.index + 1];
     if (next) next.setState(STORY_STATE.SELECTED);
 
-    this._tryDrawLine();
+    this._connectToPrevious(star);
   }
 
-  _tryDrawLine() {
-    for (let i = 0; i < this.stars.length - 1; i++) {
-      const a = this.stars[i];
-      const b = this.stars[i + 1];
+  _connectToPrevious(currentStar) {
+    if (!currentStar || currentStar.index <= 0) return;
 
-      if (
-        a.state === STORY_STATE.CLICKED &&
-        b.state === STORY_STATE.CLICKED
-      ) {
-        if (this.lines[i]) continue;
+    const previousStar = this.stars[currentStar.index - 1];
+    if (!previousStar || previousStar.state !== STORY_STATE.CLICKED) return;
+    if (this.lines[currentStar.index - 1]) return;
 
-        const segment = new THREE.Vector3().subVectors(b.position, a.position);
-        const mid = a.position.clone().add(b.position).multiplyScalar(0.5);
-        const up = mid.clone().normalize();
-        const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.11));
+    const segment = new THREE.Vector3().subVectors(currentStar.position, previousStar.position);
+    const mid = previousStar.position.clone().add(currentStar.position).multiplyScalar(0.5);
+    const up = mid.clone().normalize();
+    const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.13));
 
-        const curve = new THREE.QuadraticBezierCurve3(a.position, control, b.position);
-        const points = curve.getPoints(28);
-        const geo = new THREE.BufferGeometry().setFromPoints(points);
-
-        const opacity = 0.26 + Math.min(0.24, segment.length() / 900.0);
-        const mat = new THREE.LineBasicMaterial({
-          color: 0xcfd9ef,
-          transparent: true,
-          opacity
-        });
-
-        const line = new THREE.Line(geo, mat);
-
-        this.scene.add(line);
-        this.lines[i] = line;
-      }
+    const curve = new THREE.QuadraticBezierCurve3(previousStar.position, control, currentStar.position);
+    const points = curve.getPoints(34);
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const lineU = new Float32Array(points.length);
+    for (let i = 0; i < points.length; i += 1) {
+      lineU[i] = i / Math.max(1, points.length - 1);
     }
+    geo.setAttribute("lineU", new THREE.BufferAttribute(lineU, 1));
+
+    const opacity = 0.22 + Math.min(0.2, segment.length() / 1000.0);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0.0 },
+        opacity: { value: opacity },
+        colorA: { value: new THREE.Color(0x9fb8ff) },
+        colorB: { value: new THREE.Color(0xe7ccff) }
+      },
+      vertexShader: `
+        attribute float lineU;
+        varying float vU;
+
+        void main() {
+          vU = lineU;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform float opacity;
+        uniform vec3 colorA;
+        uniform vec3 colorB;
+        varying float vU;
+
+        void main() {
+          float flow = 0.5 + 0.5 * sin(vU * 16.0 - time * 1.35);
+          float shimmer = 0.5 + 0.5 * sin(vU * 27.0 + time * 2.05);
+          float edgeFade = smoothstep(0.0, 0.12, vU) * (1.0 - smoothstep(0.88, 1.0, vU));
+          vec3 color = mix(colorA, colorB, 0.35 + 0.65 * flow);
+          float alpha = opacity * edgeFade * (0.6 + 0.4 * shimmer);
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    const line = new THREE.Line(geo, mat);
+    this.scene.add(line);
+    this.lines[currentStar.index - 1] = { mesh: line, material: mat };
   }
 
   update() {
@@ -367,6 +396,11 @@ export class StoryStarSystem {
       this.showClickHint = false;
       this.selectionPulseTime = 0;
     }
+
+    this.lines.forEach((entry) => {
+      if (!entry || !entry.material) return;
+      entry.material.uniforms.time.value += dt;
+    });
 
     this.stars.forEach((star) => {
       if (star === active && star.state === STORY_STATE.SELECTED) {
