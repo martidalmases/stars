@@ -267,8 +267,8 @@ export function createSkySphere(camera = null) {
         vec3 lowerGradient = mix(horizonColor, midColor, lowerMix);
         vec3 skyColor = mix(lowerGradient, zenithColor, upperMix);
 
-        float horizonBand = exp(-pow(abs(vWorldDir.y) / 0.085, 2.0));
-        skyColor += pollutionBandColor * horizonBand * 0.14;
+        float horizonBand = exp(-pow(abs(vWorldDir.y) / 0.13, 2.0));
+        skyColor += pollutionBandColor * horizonBand * 0.24;
 
         float nA = hash(vWorldDir * 210.0);
         float nB = hash(vWorldDir.zyx * 390.0);
@@ -279,26 +279,29 @@ export function createSkySphere(camera = null) {
         float nebulaNoiseB = layeredNebula((vWorldDir + vec3(0.0, 0.18, 0.0)).zyx);
         float nebulaNoiseC = layeredNebula(vWorldDir + vec3(0.11, -0.05, 0.27));
         float azimuth = atan(vWorldDir.z, vWorldDir.x);
-        float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2 + nebulaNoiseC * 0.7);
+        float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 1.4 + nebulaNoiseB * 0.7 + nebulaNoiseC * 0.45);
         float clusterDensity = clusterField(vWorldDir);
 
         float nebulaBand = mix(1.0, smoothstep(0.04, 0.95, 1.0 - abs(vWorldDir.y)), 0.3);
         float nebulaDetail = smoothstep(0.29, 0.76, nebulaNoiseA * 0.62 + nebulaNoiseB * 0.2 + nebulaNoiseC * 0.18);
         float nebulaFade = smoothstep(0.02, 0.96, y) * (1.0 - horizonBand * 0.82);
-        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.58 + 0.42 * azimuthWrap) * (0.52 + clusterDensity * 0.95);
+        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.74 + 0.26 * azimuthWrap) * (0.52 + clusterDensity * 0.95);
         float dustLanes = smoothstep(0.52, 0.92, nebulaNoiseC) * nebulaBand * 0.68;
 
         float volumetric = smoothstep(0.36, 0.84, nebulaNoiseA * 0.74 + nebulaNoiseB * 0.26) * nebulaBand * nebulaFade;
 
-        vec3 nebulaWhite = vec3(0.78, 0.80, 0.92);
-        vec3 nebulaBlue = vec3(0.32, 0.47, 0.78);
-        vec3 nebulaPurple = vec3(0.44, 0.26, 0.62);
-        vec3 nebulaColor = mix(nebulaBlue, nebulaPurple, 0.34 + 0.66 * azimuthWrap);
-        nebulaColor = mix(nebulaColor, nebulaWhite, smoothstep(0.28, 0.85, nebulaNoiseA) * 0.28);
+        vec3 nebulaWhite = vec3(0.84, 0.84, 0.9);
+        vec3 nebulaWarm = vec3(0.72, 0.56, 0.42);
+        vec3 nebulaCold = vec3(0.31, 0.38, 0.66);
+        float innerCore = smoothstep(0.2, 0.88, nebulaMask);
+        float outerEdge = smoothstep(0.08, 0.65, nebulaMask) * (1.0 - innerCore);
+        vec3 nebulaColor = mix(nebulaCold, nebulaWarm, innerCore * (0.72 + 0.28 * nebulaNoiseA));
+        nebulaColor = mix(nebulaColor, nebulaWhite, innerCore * 0.42);
+        nebulaColor = mix(nebulaColor, nebulaCold * 0.9, outerEdge * (0.7 + 0.3 * nebulaNoiseB));
         float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * (0.26 + clusterDensity * 0.2);
-        skyColor += nebulaColor * volumetric * (0.16 + clusterDensity * 0.1);
-        skyColor += vec3(0.08, 0.09, 0.16) * nebulaCoreBoost * 0.14;
+        skyColor += nebulaColor * nebulaMask * (0.15 + clusterDensity * 0.12);
+        skyColor += nebulaColor * volumetric * (0.08 + clusterDensity * 0.06);
+        skyColor += vec3(0.07, 0.075, 0.13) * nebulaCoreBoost * 0.08;
         skyColor -= vec3(0.022, 0.016, 0.03) * dustLanes;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
