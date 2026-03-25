@@ -15,8 +15,17 @@ function createBackgroundStarField(radius = 980, count = 3400) {
   const clusterAxes = [
     new THREE.Vector3(0.76, 0.29, -0.58).normalize(),
     new THREE.Vector3(-0.51, 0.45, 0.73).normalize(),
-    new THREE.Vector3(0.12, 0.64, 0.76).normalize()
+    new THREE.Vector3(0.12, 0.64, 0.76).normalize(),
+    new THREE.Vector3(-0.26, 0.72, -0.64).normalize(),
+    new THREE.Vector3(0.58, 0.52, 0.45).normalize()
   ];
+  const clusterFrames = clusterAxes.map((clusterAxis) => {
+    const tangentA = new THREE.Vector3(0, 1, 0).cross(clusterAxis);
+    if (tangentA.lengthSq() < 0.0001) tangentA.set(1, 0, 0);
+    tangentA.normalize();
+    const tangentB = new THREE.Vector3().crossVectors(clusterAxis, tangentA).normalize();
+    return { clusterAxis, tangentA, tangentB };
+  });
 
   for (let i = 0; i < count; i += 1) {
     const dir = new THREE.Vector3();
@@ -34,12 +43,19 @@ function createBackgroundStarField(radius = 980, count = 3400) {
       const bandDensity = Math.pow(Math.max(galacticBand, 0.0), 1.2);
 
       let localCluster = 0;
-      clusterAxes.forEach((clusterAxis) => {
-        const dot = Math.max(0, dir.dot(clusterAxis));
-        localCluster += Math.pow(dot, 22.0);
+      clusterFrames.forEach(({ clusterAxis, tangentA, tangentB }) => {
+        const along = Math.max(0.0, dir.dot(clusterAxis));
+        if (along <= 0.0) return;
+
+        const lx = dir.dot(tangentA);
+        const ly = dir.dot(tangentB);
+        const filamentA = Math.exp(-(lx * lx / 0.004 + ly * ly / 0.018));
+        const filamentB = Math.exp(-(lx * lx / 0.014 + ly * ly / 0.003));
+        const filamentMix = Math.max(filamentA, filamentB);
+        localCluster += Math.pow(along, 14.0) * filamentMix;
       });
 
-      const clustering = 0.2 + bandDensity * 0.66 + localCluster * 1.7;
+      const clustering = 0.16 + bandDensity * 0.62 + localCluster * 1.28;
       const keepChance = THREE.MathUtils.clamp(horizonFade * clustering, 0.06, 0.98);
 
       accepted = Math.random() < keepChance;
@@ -214,6 +230,13 @@ export function createSkySphere(camera = null) {
         return sum;
       }
 
+      float layeredNebula(vec3 p) {
+        float n0 = fbm(p * vec3(5.8, 8.2, 6.8));
+        float n1 = fbm((p + vec3(0.21, -0.08, 0.14)) * vec3(8.4, 5.5, 9.2));
+        float n2 = fbm((p + vec3(-0.16, 0.13, 0.22)) * vec3(11.1, 7.1, 10.4));
+        return n0 * 0.52 + n1 * 0.3 + n2 * 0.18;
+      }
+
       void main() {
         float y = clamp(vWorldDir.y * 0.5 + 0.5, 0.0, 1.0);
 
@@ -231,25 +254,36 @@ export function createSkySphere(camera = null) {
         float noise = (nA * 0.65 + nB * 0.35) - 0.5;
         skyColor += noise * 0.018;
 
-        float nebulaNoiseA = fbm(vWorldDir * vec3(6.4, 9.2, 6.4));
-        float nebulaNoiseB = fbm((vWorldDir + vec3(0.0, 0.18, 0.0)).zyx * vec3(7.8, 5.6, 8.4));
-        float nebulaNoiseC = fbm((vWorldDir + vec3(0.11, -0.05, 0.27)) * vec3(11.2, 8.1, 10.3));
+        float nebulaNoiseA = layeredNebula(vWorldDir);
+        float nebulaNoiseB = layeredNebula((vWorldDir + vec3(0.0, 0.18, 0.0)).zyx);
+        float nebulaNoiseC = layeredNebula(vWorldDir + vec3(0.11, -0.05, 0.27));
         float azimuth = atan(vWorldDir.z, vWorldDir.x);
         float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2 + nebulaNoiseC * 0.7);
 
-        float nebulaBand = smoothstep(0.1, 0.92, 1.0 - abs(vWorldDir.y));
-        float nebulaDetail = smoothstep(0.41, 0.77, nebulaNoiseA * 0.55 + nebulaNoiseB * 0.25 + nebulaNoiseC * 0.2);
+        float nebulaBand = smoothstep(0.08, 0.95, 1.0 - abs(vWorldDir.y));
+        float nebulaDetail = smoothstep(0.35, 0.82, nebulaNoiseA * 0.55 + nebulaNoiseB * 0.25 + nebulaNoiseC * 0.2);
         float nebulaFade = smoothstep(0.08, 0.84, y) * (1.0 - horizonBand * 0.88);
         float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.65 + 0.35 * azimuthWrap);
-        float dustLanes = smoothstep(0.56, 0.9, nebulaNoiseC) * nebulaBand * 0.55;
+        float dustLanes = smoothstep(0.52, 0.92, nebulaNoiseC) * nebulaBand * 0.68;
 
-        vec3 nebulaCool = vec3(0.13, 0.17, 0.29);
-        vec3 nebulaWarm = vec3(0.20, 0.11, 0.19);
+        vec3 ray0 = normalize(vWorldDir + vec3(0.03, 0.02, -0.01));
+        vec3 ray1 = normalize(vWorldDir + vec3(-0.025, -0.01, 0.03));
+        vec3 ray2 = normalize(vWorldDir + vec3(0.015, -0.03, -0.025));
+        float vol0 = layeredNebula(ray0 + vec3(0.08, 0.0, 0.0));
+        float vol1 = layeredNebula(ray1 + vec3(-0.06, 0.04, 0.02));
+        float vol2 = layeredNebula(ray2 + vec3(0.03, -0.05, -0.04));
+        float volumetric = smoothstep(0.38, 0.86, vol0 * 0.45 + vol1 * 0.33 + vol2 * 0.22) * nebulaBand * nebulaFade;
+
+        vec3 nebulaCool = vec3(0.11, 0.20, 0.36);
+        vec3 nebulaWarm = vec3(0.34, 0.12, 0.23);
+        vec3 nebulaTeal = vec3(0.10, 0.29, 0.28);
         vec3 nebulaColor = mix(nebulaCool, nebulaWarm, 0.35 + 0.65 * azimuthWrap);
+        nebulaColor = mix(nebulaColor, nebulaTeal, smoothstep(0.35, 0.9, nebulaNoiseB) * 0.45);
         float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * 0.27;
-        skyColor += vec3(0.06, 0.07, 0.12) * nebulaCoreBoost * 0.13;
-        skyColor -= vec3(0.028, 0.02, 0.036) * dustLanes;
+        skyColor += nebulaColor * nebulaMask * 0.33;
+        skyColor += nebulaColor * volumetric * 0.19;
+        skyColor += vec3(0.08, 0.09, 0.16) * nebulaCoreBoost * 0.16;
+        skyColor -= vec3(0.04, 0.028, 0.052) * dustLanes;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
