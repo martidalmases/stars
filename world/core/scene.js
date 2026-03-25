@@ -5,7 +5,7 @@ export function createScene() {
   return scene;
 }
 
-function createBackgroundStarField(radius = 980, count = 2200) {
+function createBackgroundStarField(radius = 980, count = 1400) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
@@ -36,6 +36,15 @@ function createBackgroundStarField(radius = 980, count = 2200) {
         .set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)
         .normalize();
 
+      const yaw = Math.atan2(dir.x, -dir.z);
+      const pitch = Math.asin(dir.y);
+      const inViewLimits =
+        Math.abs(yaw) <= THREE.MathUtils.degToRad(108) &&
+        pitch >= THREE.MathUtils.degToRad(-26) &&
+        pitch <= THREE.MathUtils.degToRad(84);
+
+      if (!inViewLimits) continue;
+
       const altitude = dir.y * 0.5 + 0.5;
       const horizonFade = THREE.MathUtils.smoothstep(altitude, 0.17, 1.0);
 
@@ -56,7 +65,7 @@ function createBackgroundStarField(radius = 980, count = 2200) {
       });
 
       const clustering = 0.16 + bandDensity * 0.62 + localCluster * 1.28;
-      const keepChance = THREE.MathUtils.clamp(horizonFade * clustering, 0.06, 0.98);
+      const keepChance = THREE.MathUtils.clamp(horizonFade * clustering, 0.12, 0.96);
 
       accepted = Math.random() < keepChance;
     }
@@ -85,14 +94,14 @@ function createBackgroundStarField(radius = 980, count = 2200) {
     }
 
     const clumpBoost = Math.max(0, 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.37));
-    const luminosity = Math.pow(Math.random(), 2.0) + clumpBoost * 0.2;
-    const size = 2.5 + Math.pow(Math.random(), 2.35) * (4.3 + clumpBoost * 0.72);
+    const luminosity = Math.pow(Math.random(), 1.9) + clumpBoost * 0.18;
+    const size = 2.8 + Math.pow(Math.random(), 2.1) * (3.6 + clumpBoost * 0.5);
 
     colors[i * 3] = starColor.r;
     colors[i * 3 + 1] = starColor.g;
     colors[i * 3 + 2] = starColor.b;
     sizes[i] = size;
-    luminosities[i] = 0.34 + luminosity * 1.16;
+    luminosities[i] = 0.42 + luminosity * 1.02;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -105,7 +114,7 @@ function createBackgroundStarField(radius = 980, count = 2200) {
     transparent: true,
     depthWrite: false,
     depthTest: false,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
     uniforms: {
       glareBoost: { value: 1.0 }
     },
@@ -125,7 +134,7 @@ function createBackgroundStarField(radius = 980, count = 2200) {
         vLuminosity = aLuminosity;
         vSize = aSize;
 
-        gl_PointSize = max(2.35, aSize * aLuminosity * (420.0 / depth));
+        gl_PointSize = max(2.8, aSize * aLuminosity * (400.0 / depth));
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
@@ -141,16 +150,10 @@ function createBackgroundStarField(radius = 980, count = 2200) {
 
         if (r > 1.0) discard;
 
-        float core = exp(-20.0 * r * r);
-        float halo = exp(-5.0 * r * r);
-
-        float spikeX = exp(-70.0 * uv.x * uv.x) * exp(-2.4 * uv.y * uv.y);
-        float spikeY = exp(-70.0 * uv.y * uv.y) * exp(-2.4 * uv.x * uv.x);
-        float diagonal = exp(-52.0 * (uv.x + uv.y) * (uv.x + uv.y)) * exp(-4.4 * (uv.x - uv.y) * (uv.x - uv.y));
-
-        float glareWeight = smoothstep(2.3, 5.8, vSize);
-        float glare = (spikeX + spikeY + diagonal * 0.48) * clamp(vSize / 5.2, 0.04, 0.34) * glareBoost * glareWeight;
-        float alpha = (core * 1.24 + halo * 0.66 + glare * 0.65) * vLuminosity;
+        float core = exp(-16.0 * r * r);
+        float halo = exp(-4.0 * r * r);
+        float softDisc = smoothstep(1.0, 0.14, r);
+        float alpha = (core * 0.95 + halo * 0.55 + softDisc * 0.2) * vLuminosity;
 
         gl_FragColor = vec4(vColor, clamp(alpha, 0.0, 1.0));
       }
@@ -158,7 +161,7 @@ function createBackgroundStarField(radius = 980, count = 2200) {
   });
 
   const stars = new THREE.Points(geometry, material);
-  stars.frustumCulled = false;
+  stars.frustumCulled = true;
   stars.renderOrder = -1;
 
   return stars;
@@ -223,7 +226,7 @@ export function createSkySphere(camera = null) {
       float fbm(vec3 p) {
         float sum = 0.0;
         float amp = 0.5;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 3; i++) {
           sum += valueNoise(p) * amp;
           p = p * 2.03 + vec3(17.0, 31.0, 13.0);
           amp *= 0.5;
@@ -232,8 +235,8 @@ export function createSkySphere(camera = null) {
       }
 
       float layeredNebula(vec3 p) {
-        float n0 = fbm(p * vec3(5.6, 7.5, 6.2));
-        float n1 = fbm((p + vec3(0.17, -0.07, 0.12)) * vec3(7.2, 5.0, 8.1));
+        float n0 = fbm(p * vec3(4.9, 6.8, 5.4));
+        float n1 = fbm((p + vec3(0.16, -0.06, 0.1)) * vec3(6.0, 4.4, 6.8));
         return n0 * 0.62 + n1 * 0.38;
       }
 
@@ -260,15 +263,13 @@ export function createSkySphere(camera = null) {
         float azimuth = atan(vWorldDir.z, vWorldDir.x);
         float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2 + nebulaNoiseC * 0.7);
 
-        float nebulaBand = smoothstep(0.08, 0.95, 1.0 - abs(vWorldDir.y));
-        float nebulaDetail = smoothstep(0.33, 0.8, nebulaNoiseA * 0.58 + nebulaNoiseB * 0.22 + nebulaNoiseC * 0.2);
+        float nebulaBand = smoothstep(0.06, 0.98, 1.0 - abs(vWorldDir.y));
+        float nebulaDetail = smoothstep(0.29, 0.76, nebulaNoiseA * 0.62 + nebulaNoiseB * 0.2 + nebulaNoiseC * 0.18);
         float nebulaFade = smoothstep(0.08, 0.84, y) * (1.0 - horizonBand * 0.88);
         float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.65 + 0.35 * azimuthWrap);
         float dustLanes = smoothstep(0.52, 0.92, nebulaNoiseC) * nebulaBand * 0.68;
 
-        vec3 ray0 = normalize(vWorldDir + vec3(0.03, 0.015, -0.015));
-        float vol0 = layeredNebula(ray0 + vec3(0.06, 0.0, -0.03));
-        float volumetric = smoothstep(0.36, 0.84, nebulaNoiseA * 0.62 + vol0 * 0.38) * nebulaBand * nebulaFade;
+        float volumetric = smoothstep(0.36, 0.84, nebulaNoiseA * 0.74 + nebulaNoiseB * 0.26) * nebulaBand * nebulaFade;
 
         vec3 nebulaCool = vec3(0.11, 0.20, 0.36);
         vec3 nebulaWarm = vec3(0.34, 0.12, 0.23);
@@ -276,10 +277,10 @@ export function createSkySphere(camera = null) {
         vec3 nebulaColor = mix(nebulaCool, nebulaWarm, 0.35 + 0.65 * azimuthWrap);
         nebulaColor = mix(nebulaColor, nebulaTeal, smoothstep(0.35, 0.9, nebulaNoiseB) * 0.45);
         float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * 0.46;
-        skyColor += nebulaColor * volumetric * 0.3;
-        skyColor += vec3(0.11, 0.11, 0.21) * nebulaCoreBoost * 0.2;
-        skyColor -= vec3(0.034, 0.024, 0.045) * dustLanes;
+        skyColor += nebulaColor * nebulaMask * 0.58;
+        skyColor += nebulaColor * volumetric * 0.42;
+        skyColor += vec3(0.13, 0.13, 0.24) * nebulaCoreBoost * 0.24;
+        skyColor -= vec3(0.028, 0.02, 0.038) * dustLanes;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
