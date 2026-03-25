@@ -112,7 +112,7 @@
       padding: 10px 24px;
       cursor: pointer;
       user-select: none;
-      transition: transform 70ms ease, background 120ms ease, left 95ms ease, top 95ms ease;
+      transition: transform 70ms ease, background 120ms ease;
     }
 
     .btn:hover {
@@ -201,6 +201,10 @@
     let chargingTimer = null;
     let worldLoaded = false;
     let questionReady = false;
+    let noTargetX = null;
+    let noTargetY = null;
+    let noCurrentX = null;
+    let noCurrentY = null;
 
     const NO_POSITIONS = [
       { x: 0.16, y: 0.2 },
@@ -288,8 +292,32 @@
       const safestCandidates = candidates.slice(0, 3);
       const picked = safestCandidates[Math.floor(Math.random() * safestCandidates.length)] || candidates[0];
 
-      noBtn.style.left = `${picked.x + noRect.width / 2}px`;
-      noBtn.style.top = `${picked.y}px`;
+      noTargetX = picked.x + noRect.width / 2;
+      noTargetY = picked.y;
+    }
+
+    function initNoButtonMotion() {
+      const areaRect = buttonArea.getBoundingClientRect();
+      const noRect = noBtn.getBoundingClientRect();
+      const startX = noRect.left - areaRect.left + noRect.width / 2;
+      const startY = noRect.top - areaRect.top;
+
+      noCurrentX = startX;
+      noCurrentY = startY;
+      noTargetX = startX;
+      noTargetY = startY;
+      noBtn.style.left = `${noCurrentX}px`;
+      noBtn.style.top = `${noCurrentY}px`;
+    }
+
+    function animateNoButton() {
+      if (noCurrentX !== null && noTargetX !== null) {
+        noCurrentX += (noTargetX - noCurrentX) * 0.17;
+        noCurrentY += (noTargetY - noCurrentY) * 0.17;
+        noBtn.style.left = `${noCurrentX}px`;
+        noBtn.style.top = `${noCurrentY}px`;
+      }
+      requestAnimationFrame(animateNoButton);
     }
 
     function pursuitNo(event) {
@@ -329,8 +357,13 @@
     }
 
     startChargingPoints();
+    initNoButtonMotion();
+    requestAnimationFrame(animateNoButton);
 
     document.addEventListener("mousemove", pursuitNo);
+    window.addEventListener("resize", () => {
+      initNoButtonMotion();
+    });
 
     yesBtn.addEventListener("click", async () => {
       if (transitioning) return;
