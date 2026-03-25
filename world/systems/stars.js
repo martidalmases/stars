@@ -2,6 +2,9 @@
 // Script per crear i controlar les estrelles (background + història)
 
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
+import { Line2 } from "https://unpkg.com/three@0.158.0/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "https://unpkg.com/three@0.158.0/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "https://unpkg.com/three@0.158.0/examples/jsm/lines/LineMaterial.js";
 
 // ==============================
 // Story Stars
@@ -210,6 +213,7 @@ export class StoryStarSystem {
     this.lastSelectedIndex = -1;
     this.showClickHint = false;
     this.selectionPulseTime = 0;
+    this.viewportSize = new THREE.Vector2(window.innerWidth, window.innerHeight);
   }
 
   init() {
@@ -283,6 +287,15 @@ export class StoryStarSystem {
     return this.showClickHint;
   }
 
+  setViewportSize(width, height) {
+    this.viewportSize.set(width, height);
+
+    this.lines.forEach((entry) => {
+      if (!entry?.material?.resolution) return;
+      entry.material.resolution.set(width, height);
+    });
+  }
+
   _handleClick() {
     const star = this._getStarInCone();
 
@@ -316,55 +329,40 @@ export class StoryStarSystem {
     const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.13));
 
     const curve = new THREE.QuadraticBezierCurve3(previousStar.position, control, currentStar.position);
-    const points = curve.getPoints(34);
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const lineU = new Float32Array(points.length);
-    for (let i = 0; i < points.length; i += 1) {
-      lineU[i] = i / Math.max(1, points.length - 1);
-    }
-    geo.setAttribute("lineU", new THREE.BufferAttribute(lineU, 1));
+    const points = curve.getPoints(46);
+    const positions = [];
+    points.forEach((p) => positions.push(p.x, p.y, p.z));
 
-    const opacity = 0.22 + Math.min(0.2, segment.length() / 1000.0);
-    const mat = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0.0 },
-        opacity: { value: opacity },
-        colorA: { value: new THREE.Color(0x9fb8ff) },
-        colorB: { value: new THREE.Color(0xe7ccff) }
-      },
-      vertexShader: `
-        attribute float lineU;
-        varying float vU;
+    const geo = new LineGeometry();
+    geo.setPositions(positions);
 
-        void main() {
-          vU = lineU;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        uniform float opacity;
-        uniform vec3 colorA;
-        uniform vec3 colorB;
-        varying float vU;
-
-        void main() {
-          float flow = 0.5 + 0.5 * sin(vU * 16.0 - time * 1.35);
-          float shimmer = 0.5 + 0.5 * sin(vU * 27.0 + time * 2.05);
-          float edgeFade = smoothstep(0.0, 0.12, vU) * (1.0 - smoothstep(0.88, 1.0, vU));
-          vec3 color = mix(colorA, colorB, 0.35 + 0.65 * flow);
-          float alpha = opacity * edgeFade * (0.6 + 0.4 * shimmer);
-          gl_FragColor = vec4(color, alpha);
-        }
-      `,
+    const opacity = 0.35 + Math.min(0.24, segment.length() / 760.0);
+    const mat = new LineMaterial({
+      color: 0xd0dcff,
       transparent: true,
+      opacity,
+      linewidth: 2.1,
+      worldUnits: false,
+      alphaToCoverage: true,
+      dashed: true,
+      dashSize: 0.58,
+      gapSize: 0.24,
+      dashOffset: 0,
+      depthTest: false,
       depthWrite: false,
       blending: THREE.AdditiveBlending
     });
+    mat.resolution.set(this.viewportSize.x, this.viewportSize.y);
 
-    const line = new THREE.Line(geo, mat);
+    const line = new Line2(geo, mat);
+    line.computeLineDistances();
     this.scene.add(line);
-    this.lines[currentStar.index - 1] = { mesh: line, material: mat };
+    this.lines[currentStar.index - 1] = {
+      mesh: line,
+      material: mat,
+      phase: Math.random() * Math.PI * 2,
+      baseOpacity: opacity
+    };
   }
 
   update() {
@@ -399,7 +397,9 @@ export class StoryStarSystem {
 
     this.lines.forEach((entry) => {
       if (!entry || !entry.material) return;
-      entry.material.uniforms.time.value += dt;
+      entry.material.dashOffset -= dt * 0.4;
+      const shimmer = 0.73 + 0.27 * (0.5 + 0.5 * Math.sin(performance.now() * 0.0017 + entry.phase));
+      entry.material.opacity = entry.baseOpacity * shimmer;
     });
 
     this.stars.forEach((star) => {

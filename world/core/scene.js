@@ -5,13 +5,18 @@ export function createScene() {
   return scene;
 }
 
-function createBackgroundStarField(radius = 980, count = 2500) {
+function createBackgroundStarField(radius = 980, count = 3400) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
   const luminosities = new Float32Array(count);
 
-  const axis = new THREE.Vector3(0.28, 0.9, -0.22).normalize();
+  const axis = new THREE.Vector3(0.24, 0.91, -0.24).normalize();
+  const clusterAxes = [
+    new THREE.Vector3(0.76, 0.29, -0.58).normalize(),
+    new THREE.Vector3(-0.51, 0.45, 0.73).normalize(),
+    new THREE.Vector3(0.12, 0.64, 0.76).normalize()
+  ];
 
   for (let i = 0; i < count; i += 1) {
     const dir = new THREE.Vector3();
@@ -23,10 +28,19 @@ function createBackgroundStarField(radius = 980, count = 2500) {
         .normalize();
 
       const altitude = dir.y * 0.5 + 0.5;
-      const horizonFade = THREE.MathUtils.smoothstep(altitude, 0.2, 1.0);
-      const band = 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.45);
-      const clustering = 0.45 + band * 0.55;
-      const keepChance = horizonFade * clustering;
+      const horizonFade = THREE.MathUtils.smoothstep(altitude, 0.17, 1.0);
+
+      const galacticBand = 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.34);
+      const bandDensity = Math.pow(Math.max(galacticBand, 0.0), 1.2);
+
+      let localCluster = 0;
+      clusterAxes.forEach((clusterAxis) => {
+        const dot = Math.max(0, dir.dot(clusterAxis));
+        localCluster += Math.pow(dot, 22.0);
+      });
+
+      const clustering = 0.2 + bandDensity * 0.66 + localCluster * 1.7;
+      const keepChance = THREE.MathUtils.clamp(horizonFade * clustering, 0.06, 0.98);
 
       accepted = Math.random() < keepChance;
     }
@@ -54,14 +68,15 @@ function createBackgroundStarField(radius = 980, count = 2500) {
       starColor.set(0xfff0dd);
     }
 
-    const luminosity = Math.pow(Math.random(), 2.35);
-    const size = 2.25 + Math.pow(Math.random(), 2.8) * 4.8;
+    const clumpBoost = Math.max(0, 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.37));
+    const luminosity = Math.pow(Math.random(), 2.2) + clumpBoost * 0.22;
+    const size = 1.9 + Math.pow(Math.random(), 2.7) * (4.8 + clumpBoost * 0.95);
 
     colors[i * 3] = starColor.r;
     colors[i * 3 + 1] = starColor.g;
     colors[i * 3 + 2] = starColor.b;
     sizes[i] = size;
-    luminosities[i] = 0.28 + luminosity * 1.35;
+    luminosities[i] = 0.22 + luminosity * 1.25;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -218,20 +233,23 @@ export function createSkySphere(camera = null) {
 
         float nebulaNoiseA = fbm(vWorldDir * vec3(6.4, 9.2, 6.4));
         float nebulaNoiseB = fbm((vWorldDir + vec3(0.0, 0.18, 0.0)).zyx * vec3(7.8, 5.6, 8.4));
+        float nebulaNoiseC = fbm((vWorldDir + vec3(0.11, -0.05, 0.27)) * vec3(11.2, 8.1, 10.3));
         float azimuth = atan(vWorldDir.z, vWorldDir.x);
-        float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2);
+        float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2 + nebulaNoiseC * 0.7);
 
         float nebulaBand = smoothstep(0.1, 0.92, 1.0 - abs(vWorldDir.y));
-        float nebulaDetail = smoothstep(0.44, 0.78, nebulaNoiseA * 0.68 + nebulaNoiseB * 0.32);
+        float nebulaDetail = smoothstep(0.41, 0.77, nebulaNoiseA * 0.55 + nebulaNoiseB * 0.25 + nebulaNoiseC * 0.2);
         float nebulaFade = smoothstep(0.08, 0.84, y) * (1.0 - horizonBand * 0.88);
-        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.72 + 0.28 * azimuthWrap);
+        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.65 + 0.35 * azimuthWrap);
+        float dustLanes = smoothstep(0.56, 0.9, nebulaNoiseC) * nebulaBand * 0.55;
 
         vec3 nebulaCool = vec3(0.13, 0.17, 0.29);
         vec3 nebulaWarm = vec3(0.20, 0.11, 0.19);
         vec3 nebulaColor = mix(nebulaCool, nebulaWarm, 0.35 + 0.65 * azimuthWrap);
         float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * 0.22;
-        skyColor += vec3(0.06, 0.07, 0.12) * nebulaCoreBoost * 0.1;
+        skyColor += nebulaColor * nebulaMask * 0.27;
+        skyColor += vec3(0.06, 0.07, 0.12) * nebulaCoreBoost * 0.13;
+        skyColor -= vec3(0.028, 0.02, 0.036) * dustLanes;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
