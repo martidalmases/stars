@@ -240,6 +240,24 @@ export function createSkySphere(camera = null) {
         return n0 * 0.62 + n1 * 0.38;
       }
 
+      float clusterField(vec3 dir) {
+        vec3 axisA = normalize(vec3(0.76, 0.29, -0.58));
+        vec3 axisB = normalize(vec3(-0.51, 0.45, 0.73));
+        vec3 axisC = normalize(vec3(0.12, 0.64, 0.76));
+        vec3 axisD = normalize(vec3(-0.26, 0.72, -0.64));
+        vec3 axisE = normalize(vec3(0.58, 0.52, 0.45));
+
+        float fA = pow(max(0.0, dot(dir, axisA)), 11.0);
+        float fB = pow(max(0.0, dot(dir, axisB)), 11.0);
+        float fC = pow(max(0.0, dot(dir, axisC)), 11.0);
+        float fD = pow(max(0.0, dot(dir, axisD)), 11.0);
+        float fE = pow(max(0.0, dot(dir, axisE)), 11.0);
+
+        float clusterMix = fA + fB + fC + fD + fE;
+        float band = 1.0 - min(1.0, abs(dot(dir, normalize(vec3(0.24, 0.91, -0.24)))) / 0.36);
+        return clamp(clusterMix * 1.35 + band * 0.6, 0.0, 1.0);
+      }
+
       void main() {
         float y = clamp(vWorldDir.y * 0.5 + 0.5, 0.0, 1.0);
 
@@ -262,11 +280,12 @@ export function createSkySphere(camera = null) {
         float nebulaNoiseC = layeredNebula(vWorldDir + vec3(0.11, -0.05, 0.27));
         float azimuth = atan(vWorldDir.z, vWorldDir.x);
         float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2 + nebulaNoiseC * 0.7);
+        float clusterDensity = clusterField(vWorldDir);
 
-        float nebulaBand = smoothstep(0.06, 0.98, 1.0 - abs(vWorldDir.y));
+        float nebulaBand = mix(1.0, smoothstep(0.04, 0.95, 1.0 - abs(vWorldDir.y)), 0.3);
         float nebulaDetail = smoothstep(0.29, 0.76, nebulaNoiseA * 0.62 + nebulaNoiseB * 0.2 + nebulaNoiseC * 0.18);
-        float nebulaFade = smoothstep(0.08, 0.84, y) * (1.0 - horizonBand * 0.88);
-        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.65 + 0.35 * azimuthWrap);
+        float nebulaFade = smoothstep(0.02, 0.96, y) * (1.0 - horizonBand * 0.82);
+        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.58 + 0.42 * azimuthWrap) * (0.52 + clusterDensity * 0.95);
         float dustLanes = smoothstep(0.52, 0.92, nebulaNoiseC) * nebulaBand * 0.68;
 
         float volumetric = smoothstep(0.36, 0.84, nebulaNoiseA * 0.74 + nebulaNoiseB * 0.26) * nebulaBand * nebulaFade;
@@ -277,8 +296,8 @@ export function createSkySphere(camera = null) {
         vec3 nebulaColor = mix(nebulaCool, nebulaWarm, 0.35 + 0.65 * azimuthWrap);
         nebulaColor = mix(nebulaColor, nebulaTeal, smoothstep(0.35, 0.9, nebulaNoiseB) * 0.45);
         float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * 0.58;
-        skyColor += nebulaColor * volumetric * 0.42;
+        skyColor += nebulaColor * nebulaMask * (0.5 + clusterDensity * 0.34);
+        skyColor += nebulaColor * volumetric * (0.34 + clusterDensity * 0.18);
         skyColor += vec3(0.13, 0.13, 0.24) * nebulaCoreBoost * 0.24;
         skyColor -= vec3(0.028, 0.02, 0.038) * dustLanes;
 
