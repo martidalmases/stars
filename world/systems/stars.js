@@ -2,9 +2,6 @@
 // Script per crear i controlar les estrelles (background + història)
 
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
-import { Line2 } from "https://unpkg.com/three@0.158.0/examples/jsm/lines/Line2.js";
-import { LineGeometry } from "https://unpkg.com/three@0.158.0/examples/jsm/lines/LineGeometry.js";
-import { LineMaterial } from "https://unpkg.com/three@0.158.0/examples/jsm/lines/LineMaterial.js";
 
 // ==============================
 // Story Stars
@@ -289,11 +286,6 @@ export class StoryStarSystem {
 
   setViewportSize(width, height) {
     this.viewportSize.set(width, height);
-
-    this.lines.forEach((entry) => {
-      if (!entry?.material?.resolution) return;
-      entry.material.resolution.set(width, height);
-    });
   }
 
   _handleClick() {
@@ -329,39 +321,29 @@ export class StoryStarSystem {
     const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.13));
 
     const curve = new THREE.QuadraticBezierCurve3(previousStar.position, control, currentStar.position);
-    const points = curve.getPoints(46);
-    const positions = [];
-    points.forEach((p) => positions.push(p.x, p.y, p.z));
-
-    const geo = new LineGeometry();
-    geo.setPositions(positions);
+    const geo = new THREE.TubeGeometry(curve, 40, 1.0, 10, false);
 
     const opacity = 0.35 + Math.min(0.24, segment.length() / 760.0);
-    const mat = new LineMaterial({
-      color: 0xd0dcff,
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0xd0dcff),
       transparent: true,
-      opacity,
-      linewidth: 2.1,
-      worldUnits: false,
-      alphaToCoverage: true,
-      dashed: true,
-      dashSize: 0.58,
-      gapSize: 0.24,
-      dashOffset: 0,
-      depthTest: false,
+      opacity: opacity * 0.78,
       depthWrite: false,
-      blending: THREE.AdditiveBlending
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false
     });
-    mat.resolution.set(this.viewportSize.x, this.viewportSize.y);
 
-    const line = new Line2(geo, mat);
-    line.computeLineDistances();
+    const line = new THREE.Mesh(geo, mat);
+    line.scale.setScalar(1);
     this.scene.add(line);
     this.lines[currentStar.index - 1] = {
       mesh: line,
       material: mat,
       phase: Math.random() * Math.PI * 2,
-      baseOpacity: opacity
+      baseOpacity: opacity * 0.78,
+      midpoint: mid.clone(),
+      targetPixels: 1.8
     };
   }
 
@@ -397,9 +379,15 @@ export class StoryStarSystem {
 
     this.lines.forEach((entry) => {
       if (!entry || !entry.material) return;
-      entry.material.dashOffset -= dt * 0.4;
       const shimmer = 0.73 + 0.27 * (0.5 + 0.5 * Math.sin(performance.now() * 0.0017 + entry.phase));
       entry.material.opacity = entry.baseOpacity * shimmer;
+
+      if (!entry.mesh || !entry.midpoint) return;
+      const viewDistance = Math.max(1.0, this.camera.position.distanceTo(entry.midpoint));
+      const verticalWorldSpan = 2.0 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov * 0.5)) * viewDistance;
+      const worldPerPixel = verticalWorldSpan / Math.max(1.0, this.viewportSize.y);
+      const radiusScale = Math.max(0.8, worldPerPixel * entry.targetPixels);
+      entry.mesh.scale.setScalar(radiusScale);
     });
 
     this.stars.forEach((star) => {
