@@ -5,7 +5,7 @@ export function createScene() {
   return scene;
 }
 
-function createBackgroundStarField(radius = 980, count = 3400) {
+function createBackgroundStarField(radius = 980, count = 2200) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
@@ -85,14 +85,14 @@ function createBackgroundStarField(radius = 980, count = 3400) {
     }
 
     const clumpBoost = Math.max(0, 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.37));
-    const luminosity = Math.pow(Math.random(), 2.2) + clumpBoost * 0.22;
-    const size = 1.9 + Math.pow(Math.random(), 2.7) * (4.8 + clumpBoost * 0.95);
+    const luminosity = Math.pow(Math.random(), 2.0) + clumpBoost * 0.2;
+    const size = 2.5 + Math.pow(Math.random(), 2.35) * (4.3 + clumpBoost * 0.72);
 
     colors[i * 3] = starColor.r;
     colors[i * 3 + 1] = starColor.g;
     colors[i * 3 + 2] = starColor.b;
     sizes[i] = size;
-    luminosities[i] = 0.22 + luminosity * 1.25;
+    luminosities[i] = 0.34 + luminosity * 1.16;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -125,7 +125,7 @@ function createBackgroundStarField(radius = 980, count = 3400) {
         vLuminosity = aLuminosity;
         vSize = aSize;
 
-        gl_PointSize = max(1.85, aSize * aLuminosity * (360.0 / depth));
+        gl_PointSize = max(2.35, aSize * aLuminosity * (420.0 / depth));
         gl_Position = projectionMatrix * mvPosition;
       }
     `,
@@ -144,12 +144,13 @@ function createBackgroundStarField(radius = 980, count = 3400) {
         float core = exp(-20.0 * r * r);
         float halo = exp(-5.0 * r * r);
 
-        float spikeX = exp(-120.0 * uv.x * uv.x) * exp(-3.0 * uv.y * uv.y);
-        float spikeY = exp(-120.0 * uv.y * uv.y) * exp(-3.0 * uv.x * uv.x);
-        float diagonal = exp(-85.0 * (uv.x + uv.y) * (uv.x + uv.y)) * exp(-6.0 * (uv.x - uv.y) * (uv.x - uv.y));
+        float spikeX = exp(-70.0 * uv.x * uv.x) * exp(-2.4 * uv.y * uv.y);
+        float spikeY = exp(-70.0 * uv.y * uv.y) * exp(-2.4 * uv.x * uv.x);
+        float diagonal = exp(-52.0 * (uv.x + uv.y) * (uv.x + uv.y)) * exp(-4.4 * (uv.x - uv.y) * (uv.x - uv.y));
 
-        float glare = (spikeX + spikeY + diagonal * 0.55) * clamp(vSize / 4.8, 0.06, 0.52) * glareBoost;
-        float alpha = (core * 1.3 + halo * 0.58 + glare * 0.9) * vLuminosity;
+        float glareWeight = smoothstep(2.3, 5.8, vSize);
+        float glare = (spikeX + spikeY + diagonal * 0.48) * clamp(vSize / 5.2, 0.04, 0.34) * glareBoost * glareWeight;
+        float alpha = (core * 1.24 + halo * 0.66 + glare * 0.65) * vLuminosity;
 
         gl_FragColor = vec4(vColor, clamp(alpha, 0.0, 1.0));
       }
@@ -222,7 +223,7 @@ export function createSkySphere(camera = null) {
       float fbm(vec3 p) {
         float sum = 0.0;
         float amp = 0.5;
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 4; i++) {
           sum += valueNoise(p) * amp;
           p = p * 2.03 + vec3(17.0, 31.0, 13.0);
           amp *= 0.5;
@@ -231,10 +232,9 @@ export function createSkySphere(camera = null) {
       }
 
       float layeredNebula(vec3 p) {
-        float n0 = fbm(p * vec3(5.8, 8.2, 6.8));
-        float n1 = fbm((p + vec3(0.21, -0.08, 0.14)) * vec3(8.4, 5.5, 9.2));
-        float n2 = fbm((p + vec3(-0.16, 0.13, 0.22)) * vec3(11.1, 7.1, 10.4));
-        return n0 * 0.52 + n1 * 0.3 + n2 * 0.18;
+        float n0 = fbm(p * vec3(5.6, 7.5, 6.2));
+        float n1 = fbm((p + vec3(0.17, -0.07, 0.12)) * vec3(7.2, 5.0, 8.1));
+        return n0 * 0.62 + n1 * 0.38;
       }
 
       void main() {
@@ -261,18 +261,14 @@ export function createSkySphere(camera = null) {
         float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 2.0 + nebulaNoiseB * 1.2 + nebulaNoiseC * 0.7);
 
         float nebulaBand = smoothstep(0.08, 0.95, 1.0 - abs(vWorldDir.y));
-        float nebulaDetail = smoothstep(0.35, 0.82, nebulaNoiseA * 0.55 + nebulaNoiseB * 0.25 + nebulaNoiseC * 0.2);
+        float nebulaDetail = smoothstep(0.33, 0.8, nebulaNoiseA * 0.58 + nebulaNoiseB * 0.22 + nebulaNoiseC * 0.2);
         float nebulaFade = smoothstep(0.08, 0.84, y) * (1.0 - horizonBand * 0.88);
         float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.65 + 0.35 * azimuthWrap);
         float dustLanes = smoothstep(0.52, 0.92, nebulaNoiseC) * nebulaBand * 0.68;
 
-        vec3 ray0 = normalize(vWorldDir + vec3(0.03, 0.02, -0.01));
-        vec3 ray1 = normalize(vWorldDir + vec3(-0.025, -0.01, 0.03));
-        vec3 ray2 = normalize(vWorldDir + vec3(0.015, -0.03, -0.025));
-        float vol0 = layeredNebula(ray0 + vec3(0.08, 0.0, 0.0));
-        float vol1 = layeredNebula(ray1 + vec3(-0.06, 0.04, 0.02));
-        float vol2 = layeredNebula(ray2 + vec3(0.03, -0.05, -0.04));
-        float volumetric = smoothstep(0.38, 0.86, vol0 * 0.45 + vol1 * 0.33 + vol2 * 0.22) * nebulaBand * nebulaFade;
+        vec3 ray0 = normalize(vWorldDir + vec3(0.03, 0.015, -0.015));
+        float vol0 = layeredNebula(ray0 + vec3(0.06, 0.0, -0.03));
+        float volumetric = smoothstep(0.36, 0.84, nebulaNoiseA * 0.62 + vol0 * 0.38) * nebulaBand * nebulaFade;
 
         vec3 nebulaCool = vec3(0.11, 0.20, 0.36);
         vec3 nebulaWarm = vec3(0.34, 0.12, 0.23);
@@ -280,10 +276,10 @@ export function createSkySphere(camera = null) {
         vec3 nebulaColor = mix(nebulaCool, nebulaWarm, 0.35 + 0.65 * azimuthWrap);
         nebulaColor = mix(nebulaColor, nebulaTeal, smoothstep(0.35, 0.9, nebulaNoiseB) * 0.45);
         float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * 0.33;
-        skyColor += nebulaColor * volumetric * 0.19;
-        skyColor += vec3(0.08, 0.09, 0.16) * nebulaCoreBoost * 0.16;
-        skyColor -= vec3(0.04, 0.028, 0.052) * dustLanes;
+        skyColor += nebulaColor * nebulaMask * 0.46;
+        skyColor += nebulaColor * volumetric * 0.3;
+        skyColor += vec3(0.11, 0.11, 0.21) * nebulaCoreBoost * 0.2;
+        skyColor -= vec3(0.034, 0.024, 0.045) * dustLanes;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
