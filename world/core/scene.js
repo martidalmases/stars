@@ -48,8 +48,8 @@ function createBackgroundStarField(radius = 980, count = 1400) {
       const altitude = dir.y * 0.5 + 0.5;
       const horizonFade = THREE.MathUtils.smoothstep(altitude, 0.17, 1.0);
 
-      const galacticBand = 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.34);
-      const bandDensity = Math.pow(Math.max(galacticBand, 0.0), 1.2);
+      const galacticBand = 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.28);
+      const bandDensity = Math.pow(Math.max(galacticBand, 0.0), 1.45);
 
       let localCluster = 0;
       clusterFrames.forEach(({ clusterAxis, tangentA, tangentB }) => {
@@ -64,8 +64,8 @@ function createBackgroundStarField(radius = 980, count = 1400) {
         localCluster += Math.pow(along, 14.0) * filamentMix;
       });
 
-      const clustering = 0.16 + bandDensity * 0.62 + localCluster * 1.28;
-      const keepChance = THREE.MathUtils.clamp(horizonFade * clustering, 0.12, 0.96);
+      const clustering = 0.1 + bandDensity * 0.95 + localCluster * 1.1;
+      const keepChance = THREE.MathUtils.clamp(horizonFade * clustering, 0.08, 0.98);
 
       accepted = Math.random() < keepChance;
     }
@@ -93,7 +93,7 @@ function createBackgroundStarField(radius = 980, count = 1400) {
       starColor.set(0xfff0dd);
     }
 
-    const clumpBoost = Math.max(0, 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.37));
+    const clumpBoost = Math.max(0, 1.0 - Math.min(1.0, Math.abs(dir.dot(axis)) / 0.3));
     const luminosity = Math.pow(Math.random(), 1.9) + clumpBoost * 0.18;
     const size = 2.8 + Math.pow(Math.random(), 2.1) * (3.6 + clumpBoost * 0.5);
 
@@ -254,8 +254,8 @@ export function createSkySphere(camera = null) {
         float fE = pow(max(0.0, dot(dir, axisE)), 11.0);
 
         float clusterMix = fA + fB + fC + fD + fE;
-        float band = 1.0 - min(1.0, abs(dot(dir, normalize(vec3(0.24, 0.91, -0.24)))) / 0.36);
-        return clamp(clusterMix * 1.35 + band * 0.6, 0.0, 1.0);
+        float band = 1.0 - min(1.0, abs(dot(dir, normalize(vec3(0.24, 0.91, -0.24)))) / 0.28);
+        return clamp(clusterMix * 1.05 + band * 1.05, 0.0, 1.0);
       }
 
       void main() {
@@ -290,16 +290,16 @@ export function createSkySphere(camera = null) {
 
         float volumetric = smoothstep(0.36, 0.84, nebulaNoiseA * 0.74 + nebulaNoiseB * 0.26) * nebulaBand * nebulaFade;
 
-        vec3 nebulaCool = vec3(0.11, 0.20, 0.36);
-        vec3 nebulaWarm = vec3(0.34, 0.12, 0.23);
-        vec3 nebulaTeal = vec3(0.10, 0.29, 0.28);
-        vec3 nebulaColor = mix(nebulaCool, nebulaWarm, 0.35 + 0.65 * azimuthWrap);
-        nebulaColor = mix(nebulaColor, nebulaTeal, smoothstep(0.35, 0.9, nebulaNoiseB) * 0.45);
+        vec3 nebulaWhite = vec3(0.78, 0.80, 0.92);
+        vec3 nebulaBlue = vec3(0.32, 0.47, 0.78);
+        vec3 nebulaPurple = vec3(0.44, 0.26, 0.62);
+        vec3 nebulaColor = mix(nebulaBlue, nebulaPurple, 0.34 + 0.66 * azimuthWrap);
+        nebulaColor = mix(nebulaColor, nebulaWhite, smoothstep(0.28, 0.85, nebulaNoiseA) * 0.28);
         float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * (0.5 + clusterDensity * 0.34);
-        skyColor += nebulaColor * volumetric * (0.34 + clusterDensity * 0.18);
-        skyColor += vec3(0.13, 0.13, 0.24) * nebulaCoreBoost * 0.24;
-        skyColor -= vec3(0.028, 0.02, 0.038) * dustLanes;
+        skyColor += nebulaColor * nebulaMask * (0.26 + clusterDensity * 0.2);
+        skyColor += nebulaColor * volumetric * (0.16 + clusterDensity * 0.1);
+        skyColor += vec3(0.08, 0.09, 0.16) * nebulaCoreBoost * 0.14;
+        skyColor -= vec3(0.022, 0.016, 0.03) * dustLanes;
 
         gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
       }
