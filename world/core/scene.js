@@ -324,14 +324,14 @@ export function createSkySphere(camera = null) {
   sky.renderOrder = -2;
 
   const upperCloudTexture = createCloudTexture({
-    density: 16,
-    centerAlpha: 0.16,
-    edgeAlpha: 0.0
+    density: 20,
+    centerAlpha: 0.28,
+    edgeAlpha: 0.02
   });
   const lowerCloudTexture = createCloudTexture({
-    density: 30,
-    centerAlpha: 0.34,
-    edgeAlpha: 0.02
+    density: 38,
+    centerAlpha: 0.52,
+    edgeAlpha: 0.08
   });
 
   const upperCloudLayer = createUpperCloudLayer(upperCloudTexture);
@@ -384,19 +384,20 @@ function createCloudTexture({
   return texture;
 }
 
-function createUpperCloudLayer(texture, count = 10) {
+function createUpperCloudLayer(texture, count = 12) {
   const group = new THREE.Group();
   const clouds = [];
 
   for (let i = 0; i < count; i += 1) {
     const w = 280 + Math.random() * 320;
-    const h = 56 + Math.random() * 52;
+    const h = 72 + Math.random() * 68;
     const geo = new THREE.PlaneGeometry(w, h);
     const mat = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
-      opacity: 0.08 + Math.random() * 0.08,
+      opacity: 0.16 + Math.random() * 0.1,
       depthWrite: false,
+      depthTest: false,
       side: THREE.DoubleSide,
       color: new THREE.Color(0xb8c6df)
     });
@@ -407,7 +408,7 @@ function createUpperCloudLayer(texture, count = 10) {
 
     const base = new THREE.Vector3(
       (Math.random() * 2 - 1) * 780,
-      360 + Math.random() * 120,
+      300 + Math.random() * 90,
       (Math.random() * 2 - 1) * 780
     );
 
@@ -438,26 +439,27 @@ function createUpperCloudLayer(texture, count = 10) {
       if (cloud.base.z < -860) cloud.base.z = 860;
 
       cloud.mesh.position.copy(cloud.base);
-      cloud.mesh.material.opacity = 0.07 + 0.07 * (0.5 + 0.5 * Math.sin(performance.now() * 0.00012 + cloud.pulseOffset));
+      cloud.mesh.material.opacity = 0.14 + 0.12 * (0.5 + 0.5 * Math.sin(performance.now() * 0.00014 + cloud.pulseOffset));
     }
   };
 
   return { group, update };
 }
 
-function createLowerCloudFogLayer(texture, count = 52) {
+function createLowerCloudFogLayer(texture, count = 70) {
   const group = new THREE.Group();
   const clouds = [];
 
   for (let i = 0; i < count; i += 1) {
-    const w = 260 + Math.random() * 420;
-    const h = 120 + Math.random() * 180;
+    const w = 380 + Math.random() * 520;
+    const h = 200 + Math.random() * 260;
     const geo = new THREE.PlaneGeometry(w, h);
     const mat = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
-      opacity: 0.22 + Math.random() * 0.2,
+      opacity: 0.35 + Math.random() * 0.24,
       depthWrite: false,
+      depthTest: false,
       side: THREE.DoubleSide,
       color: new THREE.Color(0xcfd8e9),
       blending: THREE.NormalBlending
@@ -470,7 +472,7 @@ function createLowerCloudFogLayer(texture, count = 52) {
     const radius = 120 + Math.random() * 460;
     const base = new THREE.Vector3(
       Math.cos(angle) * radius,
-      -110 - Math.random() * 120,
+      -35 - Math.random() * 105,
       Math.sin(angle) * radius
     );
 
@@ -479,18 +481,18 @@ function createLowerCloudFogLayer(texture, count = 52) {
 
     const drift = new THREE.Vector3(
       (Math.random() * 2 - 1) * 2.6,
-      (Math.random() * 2 - 1) * 0.25,
+      (Math.random() * 2 - 1) * 0.16,
       (Math.random() * 2 - 1) * 2.6
     );
     const pulseOffset = Math.random() * Math.PI * 2;
 
-    clouds.push({ mesh, base, drift, pulseOffset, radius });
+    clouds.push({ mesh, base, drift, pulseOffset });
     group.add(mesh);
   }
 
   const update = (dt, camera) => {
     if (camera) {
-      group.position.set(camera.position.x, camera.position.y - 18, camera.position.z);
+      group.position.set(camera.position.x, camera.position.y - 10, camera.position.z);
     }
 
     for (const cloud of clouds) {
@@ -503,13 +505,13 @@ function createLowerCloudFogLayer(texture, count = 52) {
         cloud.base.z *= scale;
       }
 
-      cloud.base.y = THREE.MathUtils.clamp(cloud.base.y + cloud.drift.y * dt, -260, -78);
+      cloud.base.y = THREE.MathUtils.clamp(cloud.base.y + cloud.drift.y * dt, -180, -20);
 
       cloud.mesh.position.copy(cloud.base);
-      cloud.mesh.lookAt(new THREE.Vector3(cloud.base.x * 1.2, cloud.base.y + 25, cloud.base.z * 1.2));
+      if (camera) cloud.mesh.quaternion.copy(camera.quaternion);
 
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.00016 + cloud.pulseOffset);
-      cloud.mesh.material.opacity = 0.2 + pulse * 0.26;
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.00018 + cloud.pulseOffset);
+      cloud.mesh.material.opacity = 0.32 + pulse * 0.3;
     }
   };
 
