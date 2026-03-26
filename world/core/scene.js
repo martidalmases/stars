@@ -407,15 +407,15 @@ function createUpperCloudLayer(texture, count = 12) {
     mesh.rotation.z = Math.random() * Math.PI * 2;
 
     const base = new THREE.Vector3(
-      (Math.random() * 2 - 1) * 780,
-      300 + Math.random() * 90,
-      (Math.random() * 2 - 1) * 780
+      (Math.random() * 2 - 1) * 700,
+      90 + Math.random() * 130,
+      -260 - Math.random() * 720
     );
 
     mesh.position.copy(base);
     mesh.renderOrder = -1;
 
-    const drift = new THREE.Vector2((Math.random() * 2 - 1) * 3.2, (Math.random() * 2 - 1) * 3.2);
+    const drift = new THREE.Vector2((Math.random() * 2 - 1) * 2.2, 4.0 + Math.random() * 8.0);
     const pulseOffset = Math.random() * Math.PI * 2;
 
     clouds.push({ mesh, base, drift, pulseOffset });
@@ -424,19 +424,17 @@ function createUpperCloudLayer(texture, count = 12) {
 
   const update = (dt, camera) => {
     if (camera) {
-      group.position.x = camera.position.x;
-      group.position.z = camera.position.z;
-      group.position.y = camera.position.y + 220;
+      group.position.copy(camera.position);
     }
 
     for (const cloud of clouds) {
       cloud.base.x += cloud.drift.x * dt;
       cloud.base.z += cloud.drift.y * dt;
 
-      if (cloud.base.x > 860) cloud.base.x = -860;
-      if (cloud.base.x < -860) cloud.base.x = 860;
-      if (cloud.base.z > 860) cloud.base.z = -860;
-      if (cloud.base.z < -860) cloud.base.z = 860;
+      if (cloud.base.x > 760) cloud.base.x = -760;
+      if (cloud.base.x < -760) cloud.base.x = 760;
+      if (cloud.base.z > -140) cloud.base.z = -980;
+      if (cloud.base.z < -980) cloud.base.z = -140;
 
       cloud.mesh.position.copy(cloud.base);
       cloud.mesh.material.opacity = 0.14 + 0.12 * (0.5 + 0.5 * Math.sin(performance.now() * 0.00014 + cloud.pulseOffset));
@@ -468,21 +466,18 @@ function createLowerCloudFogLayer(texture, count = 70) {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = 0;
 
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 120 + Math.random() * 460;
     const base = new THREE.Vector3(
-      Math.cos(angle) * radius,
-      -35 - Math.random() * 105,
-      Math.sin(angle) * radius
+      (Math.random() * 2 - 1) * 860,
+      -34 + Math.random() * 80,
+      -120 - Math.random() * 860
     );
 
     mesh.position.copy(base);
-    mesh.rotation.y = angle + (Math.random() * 0.6 - 0.3);
 
     const drift = new THREE.Vector3(
-      (Math.random() * 2 - 1) * 2.6,
-      (Math.random() * 2 - 1) * 0.16,
-      (Math.random() * 2 - 1) * 2.6
+      (Math.random() * 2 - 1) * 1.9,
+      (Math.random() * 2 - 1) * 0.12,
+      7.0 + Math.random() * 14.0
     );
     const pulseOffset = Math.random() * Math.PI * 2;
 
@@ -492,26 +487,24 @@ function createLowerCloudFogLayer(texture, count = 70) {
 
   const update = (dt, camera) => {
     if (camera) {
-      group.position.set(camera.position.x, camera.position.y - 10, camera.position.z);
+      group.position.copy(camera.position);
     }
 
     for (const cloud of clouds) {
       cloud.base.addScaledVector(cloud.drift, dt);
 
-      const radial = Math.hypot(cloud.base.x, cloud.base.z);
-      if (radial > 680) {
-        const scale = 680 / radial;
-        cloud.base.x *= scale;
-        cloud.base.z *= scale;
-      }
+      if (cloud.base.x > 920) cloud.base.x = -920;
+      if (cloud.base.x < -920) cloud.base.x = 920;
+      if (cloud.base.z > -60) cloud.base.z = -1020;
+      if (cloud.base.z < -1020) cloud.base.z = -60;
 
-      cloud.base.y = THREE.MathUtils.clamp(cloud.base.y + cloud.drift.y * dt, -180, -20);
+      cloud.base.y = THREE.MathUtils.clamp(cloud.base.y + cloud.drift.y * dt, -96, 52);
 
       cloud.mesh.position.copy(cloud.base);
       if (camera) cloud.mesh.quaternion.copy(camera.quaternion);
 
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.00018 + cloud.pulseOffset);
-      cloud.mesh.material.opacity = 0.32 + pulse * 0.3;
+      cloud.mesh.material.opacity = 0.38 + pulse * 0.32;
     }
   };
 
