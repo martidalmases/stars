@@ -393,13 +393,14 @@ function createUpperCloudLayer(texture, count = 12) {
     const h = 72 + Math.random() * 68;
     const geo = new THREE.PlaneGeometry(w, h);
     const mat = new THREE.MeshBasicMaterial({
-      map: texture,
+      map: null,
       transparent: false,
       opacity: 1.0,
       depthWrite: false,
       depthTest: false,
       side: THREE.DoubleSide,
-      color: new THREE.Color(0xff0000)
+      color: new THREE.Color(0xff0000),
+      wireframe: true
     });
 
     const mesh = new THREE.Mesh(geo, mat);
@@ -453,13 +454,14 @@ function createLowerCloudFogLayer(texture, count = 70) {
     const h = 200 + Math.random() * 260;
     const geo = new THREE.PlaneGeometry(w, h);
     const mat = new THREE.MeshBasicMaterial({
-      map: texture,
+      map: null,
       transparent: false,
       opacity: 1.0,
       depthWrite: false,
       depthTest: false,
       side: THREE.DoubleSide,
       color: new THREE.Color(0xff0000),
+      wireframe: true,
       blending: THREE.NormalBlending
     });
 
