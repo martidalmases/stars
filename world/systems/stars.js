@@ -210,6 +210,7 @@ export class StoryStarSystem {
     this.lastSelectedIndex = -1;
     this.showClickHint = false;
     this.selectionPulseTime = 0;
+    this.viewportSize = new THREE.Vector2(window.innerWidth, window.innerHeight);
   }
 
   init() {
@@ -283,6 +284,10 @@ export class StoryStarSystem {
     return this.showClickHint;
   }
 
+  setViewportSize(width, height) {
+    this.viewportSize.set(width, height);
+  }
+
   _handleClick() {
     const star = this._getStarInCone();
 
@@ -316,55 +321,30 @@ export class StoryStarSystem {
     const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.13));
 
     const curve = new THREE.QuadraticBezierCurve3(previousStar.position, control, currentStar.position);
-    const points = curve.getPoints(34);
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const lineU = new Float32Array(points.length);
-    for (let i = 0; i < points.length; i += 1) {
-      lineU[i] = i / Math.max(1, points.length - 1);
-    }
-    geo.setAttribute("lineU", new THREE.BufferAttribute(lineU, 1));
+    const geo = new THREE.TubeGeometry(curve, 40, 1.0, 10, false);
 
-    const opacity = 0.22 + Math.min(0.2, segment.length() / 1000.0);
-    const mat = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0.0 },
-        opacity: { value: opacity },
-        colorA: { value: new THREE.Color(0x9fb8ff) },
-        colorB: { value: new THREE.Color(0xe7ccff) }
-      },
-      vertexShader: `
-        attribute float lineU;
-        varying float vU;
-
-        void main() {
-          vU = lineU;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        uniform float opacity;
-        uniform vec3 colorA;
-        uniform vec3 colorB;
-        varying float vU;
-
-        void main() {
-          float flow = 0.5 + 0.5 * sin(vU * 16.0 - time * 1.35);
-          float shimmer = 0.5 + 0.5 * sin(vU * 27.0 + time * 2.05);
-          float edgeFade = smoothstep(0.0, 0.12, vU) * (1.0 - smoothstep(0.88, 1.0, vU));
-          vec3 color = mix(colorA, colorB, 0.35 + 0.65 * flow);
-          float alpha = opacity * edgeFade * (0.6 + 0.4 * shimmer);
-          gl_FragColor = vec4(color, alpha);
-        }
-      `,
+    const opacity = 0.35 + Math.min(0.24, segment.length() / 760.0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0xd0dcff),
       transparent: true,
+      opacity: opacity * 0.78,
       depthWrite: false,
-      blending: THREE.AdditiveBlending
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false
     });
 
-    const line = new THREE.Line(geo, mat);
+    const line = new THREE.Mesh(geo, mat);
+    line.scale.setScalar(1);
     this.scene.add(line);
-    this.lines[currentStar.index - 1] = { mesh: line, material: mat };
+    this.lines[currentStar.index - 1] = {
+      mesh: line,
+      material: mat,
+      phase: Math.random() * Math.PI * 2,
+      baseOpacity: opacity * 0.78,
+      midpoint: mid.clone(),
+      targetPixels: 1.8
+    };
   }
 
   update() {
@@ -399,7 +379,15 @@ export class StoryStarSystem {
 
     this.lines.forEach((entry) => {
       if (!entry || !entry.material) return;
-      entry.material.uniforms.time.value += dt;
+      const shimmer = 0.73 + 0.27 * (0.5 + 0.5 * Math.sin(performance.now() * 0.0017 + entry.phase));
+      entry.material.opacity = entry.baseOpacity * shimmer;
+
+      if (!entry.mesh || !entry.midpoint) return;
+      const viewDistance = Math.max(1.0, this.camera.position.distanceTo(entry.midpoint));
+      const verticalWorldSpan = 2.0 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov * 0.5)) * viewDistance;
+      const worldPerPixel = verticalWorldSpan / Math.max(1.0, this.viewportSize.y);
+      const radiusScale = Math.max(0.8, worldPerPixel * entry.targetPixels);
+      entry.mesh.scale.setScalar(radiusScale);
     });
 
     this.stars.forEach((star) => {

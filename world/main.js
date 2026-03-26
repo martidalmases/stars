@@ -139,6 +139,7 @@ clusterCenter: new THREE.Vector3(0, 260, -760),
 clusterScale: 230
 });
 storyStars.init();
+storyStars.setViewportSize(window.innerWidth, window.innerHeight);
 
 // ==============================
 // Resize
@@ -148,6 +149,7 @@ window.addEventListener("resize", () => {
 camera.aspect = window.innerWidth / window.innerHeight;
 camera.updateProjectionMatrix();
 renderer.setSize(window.innerWidth, window.innerHeight);
+storyStars.setViewportSize(window.innerWidth, window.innerHeight);
 });
 
 // ==============================
