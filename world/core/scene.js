@@ -394,12 +394,12 @@ function createUpperCloudLayer(texture, count = 12) {
     const geo = new THREE.PlaneGeometry(w, h);
     const mat = new THREE.MeshBasicMaterial({
       map: texture,
-      transparent: true,
-      opacity: 0.16 + Math.random() * 0.1,
+      transparent: false,
+      opacity: 1.0,
       depthWrite: false,
       depthTest: false,
       side: THREE.DoubleSide,
-      color: new THREE.Color(0xb8c6df)
+      color: new THREE.Color(0xff0000)
     });
 
     const mesh = new THREE.Mesh(geo, mat);
@@ -437,7 +437,7 @@ function createUpperCloudLayer(texture, count = 12) {
       if (cloud.base.z < -980) cloud.base.z = -140;
 
       cloud.mesh.position.copy(cloud.base);
-      cloud.mesh.material.opacity = 0.14 + 0.12 * (0.5 + 0.5 * Math.sin(performance.now() * 0.00014 + cloud.pulseOffset));
+      cloud.mesh.material.opacity = 1.0;
     }
   };
 
@@ -454,12 +454,12 @@ function createLowerCloudFogLayer(texture, count = 70) {
     const geo = new THREE.PlaneGeometry(w, h);
     const mat = new THREE.MeshBasicMaterial({
       map: texture,
-      transparent: true,
-      opacity: 0.35 + Math.random() * 0.24,
+      transparent: false,
+      opacity: 1.0,
       depthWrite: false,
       depthTest: false,
       side: THREE.DoubleSide,
-      color: new THREE.Color(0xcfd8e9),
+      color: new THREE.Color(0xff0000),
       blending: THREE.NormalBlending
     });
 
@@ -503,8 +503,7 @@ function createLowerCloudFogLayer(texture, count = 70) {
       cloud.mesh.position.copy(cloud.base);
       if (camera) cloud.mesh.quaternion.copy(camera.quaternion);
 
-      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.00018 + cloud.pulseOffset);
-      cloud.mesh.material.opacity = 0.38 + pulse * 0.32;
+      cloud.mesh.material.opacity = 1.0;
     }
   };
 
