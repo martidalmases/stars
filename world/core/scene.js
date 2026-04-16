@@ -169,188 +169,29 @@ function createBackgroundStarField(radius = 980, count = 1400) {
 }
 
 export function createSkySphere(camera = null) {
-  console.log("[Sky] Initializing night sky dome (3-color gradient + horizon haze + stars)...");
+  console.log("[Sky] Initializing sky dome from HDRI texture (hdri_1)...");
 
   const geo = new THREE.SphereGeometry(1010, 64, 64);
+  const hdriTexture = new THREE.TextureLoader().load("./systems/hdri_1.jpg");
+  hdriTexture.colorSpace = THREE.SRGBColorSpace;
+  hdriTexture.minFilter = THREE.LinearFilter;
+  hdriTexture.magFilter = THREE.LinearFilter;
 
-  const nightGradientMat = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    uniforms: {
-      horizonColor: { value: new THREE.Color(0x101a2c) },
-      midColor: { value: new THREE.Color(0x081126) },
-      zenithColor: { value: new THREE.Color(0x010205) },
-      pollutionBandColor: { value: new THREE.Color(0xc2c9d4) }
-    },
-    vertexShader: `
-      varying vec3 vWorldDir;
-
-      void main() {
-        vec4 worldPos = modelMatrix * vec4(position, 1.0);
-        vWorldDir = normalize(worldPos.xyz);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 horizonColor;
-      uniform vec3 midColor;
-      uniform vec3 zenithColor;
-      uniform vec3 pollutionBandColor;
-      varying vec3 vWorldDir;
-
-      float hash(vec3 p) {
-        return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
-      }
-
-      float valueNoise(vec3 p) {
-        vec3 i = floor(p);
-        vec3 f = fract(p);
-        f = f * f * (3.0 - 2.0 * f);
-
-        float n000 = hash(i + vec3(0.0, 0.0, 0.0));
-        float n100 = hash(i + vec3(1.0, 0.0, 0.0));
-        float n010 = hash(i + vec3(0.0, 1.0, 0.0));
-        float n110 = hash(i + vec3(1.0, 1.0, 0.0));
-        float n001 = hash(i + vec3(0.0, 0.0, 1.0));
-        float n101 = hash(i + vec3(1.0, 0.0, 1.0));
-        float n011 = hash(i + vec3(0.0, 1.0, 1.0));
-        float n111 = hash(i + vec3(1.0, 1.0, 1.0));
-
-        float nx00 = mix(n000, n100, f.x);
-        float nx10 = mix(n010, n110, f.x);
-        float nx01 = mix(n001, n101, f.x);
-        float nx11 = mix(n011, n111, f.x);
-        float nxy0 = mix(nx00, nx10, f.y);
-        float nxy1 = mix(nx01, nx11, f.y);
-        return mix(nxy0, nxy1, f.z);
-      }
-
-      float fbm(vec3 p) {
-        float sum = 0.0;
-        float amp = 0.5;
-        for (int i = 0; i < 3; i++) {
-          sum += valueNoise(p) * amp;
-          p = p * 2.03 + vec3(17.0, 31.0, 13.0);
-          amp *= 0.5;
-        }
-        return sum;
-      }
-
-      float layeredNebula(vec3 p) {
-        float n0 = fbm(p * vec3(4.9, 6.8, 5.4));
-        float n1 = fbm((p + vec3(0.16, -0.06, 0.1)) * vec3(6.0, 4.4, 6.8));
-        return n0 * 0.62 + n1 * 0.38;
-      }
-
-      float milkyWayField(vec3 dir) {
-        vec3 axisA = normalize(vec3(0.76, 0.29, -0.58));
-        vec3 axisB = normalize(vec3(-0.51, 0.45, 0.73));
-        vec3 axisC = normalize(vec3(0.12, 0.64, 0.76));
-        vec3 axisD = normalize(vec3(-0.26, 0.72, -0.64));
-        vec3 axisE = normalize(vec3(0.58, 0.52, 0.45));
-
-        float fA = pow(max(0.0, dot(dir, axisA)), 11.0);
-        float fB = pow(max(0.0, dot(dir, axisB)), 11.0);
-        float fC = pow(max(0.0, dot(dir, axisC)), 11.0);
-        float fD = pow(max(0.0, dot(dir, axisD)), 11.0);
-        float fE = pow(max(0.0, dot(dir, axisE)), 11.0);
-
-        float clusterMix = fA + fB + fC + fD + fE;
-        vec3 bandAxis = normalize(vec3(0.24, 0.91, -0.24));
-        float band = 1.0 - min(1.0, abs(dot(dir, bandAxis)) / 0.28);
-
-        vec3 tangentA = normalize(cross(vec3(0.0, 1.0, 0.0), bandAxis));
-        vec3 tangentB = normalize(cross(bandAxis, tangentA));
-        float u = dot(dir, tangentA);
-        float v = dot(dir, tangentB);
-        float streak = 0.5 + 0.5 * sin(u * 42.0 + v * 17.0);
-        float dustyRidge = smoothstep(0.25, 0.9, band) * (0.62 + 0.38 * streak);
-
-        return clamp(clusterMix * 0.96 + dustyRidge * 1.08, 0.0, 1.0);
-      }
-
-      void main() {
-        float y = clamp(vWorldDir.y * 0.5 + 0.5, 0.0, 1.0);
-
-        float lowerMix = smoothstep(0.00, 0.48, pow(y, 1.62));
-        float upperMix = smoothstep(0.24, 0.94, pow(y, 1.24));
-
-        vec3 lowerGradient = mix(horizonColor, midColor, lowerMix);
-        vec3 skyColor = mix(lowerGradient, zenithColor, upperMix);
-
-        float horizonBand = exp(-pow(abs(vWorldDir.y) / 0.13, 2.0));
-        skyColor += pollutionBandColor * horizonBand * 0.24;
-
-        float nA = hash(vWorldDir * 210.0);
-        float nB = hash(vWorldDir.zyx * 390.0);
-        float noise = (nA * 0.65 + nB * 0.35) - 0.5;
-        skyColor += noise * 0.018;
-
-        float nebulaNoiseA = layeredNebula(vWorldDir);
-        float nebulaNoiseB = layeredNebula((vWorldDir + vec3(0.0, 0.18, 0.0)).zyx);
-        float nebulaNoiseC = layeredNebula(vWorldDir + vec3(0.11, -0.05, 0.27));
-        // Rotate the azimuth branch cut so the procedural wrap seam lands behind
-        // the default forward view (camera looks toward -Z, seam moved to +Z).
-        float azimuth = atan(vWorldDir.x, -vWorldDir.z);
-        float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 1.4 + nebulaNoiseB * 0.7 + nebulaNoiseC * 0.45);
-        float clusterDensity = milkyWayField(vWorldDir);
-
-        float nebulaBand = mix(1.0, smoothstep(0.04, 0.95, 1.0 - abs(vWorldDir.y)), 0.32);
-        float nebulaDetail = smoothstep(0.29, 0.76, nebulaNoiseA * 0.62 + nebulaNoiseB * 0.2 + nebulaNoiseC * 0.18);
-        float nebulaFade = smoothstep(0.02, 0.96, y) * (1.0 - horizonBand * 0.82);
-        float nebulaMask = nebulaBand * nebulaDetail * nebulaFade * (0.8 + 0.2 * azimuthWrap) * (0.45 + clusterDensity * 1.05);
-        float dustLanes = smoothstep(0.5, 0.9, nebulaNoiseC) * nebulaBand * (0.58 + clusterDensity * 0.22);
-
-        float volumetric = smoothstep(0.38, 0.86, nebulaNoiseA * 0.78 + nebulaNoiseB * 0.22) * nebulaBand * nebulaFade;
-
-        vec3 nebulaWhite = vec3(0.92, 0.9, 0.86);
-        vec3 nebulaWarm = vec3(0.74, 0.58, 0.41);
-        vec3 nebulaCold = vec3(0.29, 0.35, 0.63);
-        float innerCore = smoothstep(0.2, 0.88, nebulaMask);
-        float outerEdge = smoothstep(0.08, 0.65, nebulaMask) * (1.0 - innerCore);
-        vec3 nebulaColor = mix(nebulaCold, nebulaWarm, innerCore * (0.72 + 0.28 * nebulaNoiseA));
-        nebulaColor = mix(nebulaColor, nebulaWhite, innerCore * 0.5);
-        nebulaColor = mix(nebulaColor, nebulaCold * 0.9, outerEdge * (0.7 + 0.3 * nebulaNoiseB));
-        float nebulaCoreBoost = pow(clamp(nebulaMask, 0.0, 1.0), 1.25);
-        skyColor += nebulaColor * nebulaMask * (0.15 + clusterDensity * 0.12);
-        skyColor += nebulaColor * volumetric * (0.08 + clusterDensity * 0.06);
-        skyColor += vec3(0.07, 0.075, 0.13) * nebulaCoreBoost * 0.08;
-        skyColor -= vec3(0.022, 0.016, 0.03) * dustLanes;
-
-        gl_FragColor = vec4(clamp(skyColor, 0.0, 1.0), 1.0);
-      }
-    `
+  const hdriMaterial = new THREE.MeshBasicMaterial({
+    map: hdriTexture,
+    side: THREE.BackSide
   });
 
-  const sky = new THREE.Mesh(geo, nightGradientMat);
+  const sky = new THREE.Mesh(geo, hdriMaterial);
+  sky.rotation.y = Math.PI;
   sky.frustumCulled = false;
   sky.renderOrder = -2;
 
-  const upperCloudTexture = createCloudTexture({
-    density: 20,
-    centerAlpha: 0.28,
-    edgeAlpha: 0.02
-  });
-  const lowerCloudTexture = createCloudTexture({
-    density: 38,
-    centerAlpha: 0.52,
-    edgeAlpha: 0.08
-  });
-
-  const upperCloudLayer = createUpperCloudLayer(upperCloudTexture);
-  const lowerCloudLayer = createLowerCloudFogLayer(lowerCloudTexture);
-
   const skyGroup = new THREE.Group();
   skyGroup.add(sky);
-  skyGroup.add(createBackgroundStarField());
-  skyGroup.add(upperCloudLayer.group);
-  skyGroup.add(lowerCloudLayer.group);
+  skyGroup.userData.update = () => {};
 
-  skyGroup.userData.update = (dt) => {
-    upperCloudLayer.update(dt, camera);
-    lowerCloudLayer.update(dt, camera);
-  };
-
-  console.log("[Sky] Sky dome ready with layered gradient, procedural star field, and dual cloud layers.");
+  console.log("[Sky] Sky dome ready with plain HDRI background.");
   return skyGroup;
 }
 
