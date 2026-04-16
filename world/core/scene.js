@@ -288,7 +288,9 @@ export function createSkySphere(camera = null) {
         float nebulaNoiseA = layeredNebula(vWorldDir);
         float nebulaNoiseB = layeredNebula((vWorldDir + vec3(0.0, 0.18, 0.0)).zyx);
         float nebulaNoiseC = layeredNebula(vWorldDir + vec3(0.11, -0.05, 0.27));
-        float azimuth = atan(vWorldDir.z, vWorldDir.x);
+        // Rotate the azimuth branch cut so the procedural wrap seam lands behind
+        // the default forward view (camera looks toward -Z, seam moved to +Z).
+        float azimuth = atan(vWorldDir.x, -vWorldDir.z);
         float azimuthWrap = 0.5 + 0.5 * sin(azimuth * 1.4 + nebulaNoiseB * 0.7 + nebulaNoiseC * 0.45);
         float clusterDensity = milkyWayField(vWorldDir);
 
