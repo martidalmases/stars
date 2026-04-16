@@ -169,7 +169,7 @@ function createBackgroundStarField(radius = 980, count = 1400) {
 }
 
 export function createSkySphere(camera = null) {
-  console.log("[Sky] Initializing sky dome from HDRI texture (hdri_2)...");
+  console.log("[Sky] Initializing stylized sky dome from HDRI texture (hdri_2)...");
 
   const geo = new THREE.SphereGeometry(1010, 64, 64);
   const hdriTexture = new THREE.TextureLoader().load("./systems/hdri_2.jpg");
@@ -177,9 +177,75 @@ export function createSkySphere(camera = null) {
   hdriTexture.minFilter = THREE.LinearFilter;
   hdriTexture.magFilter = THREE.LinearFilter;
 
-  const hdriMaterial = new THREE.MeshBasicMaterial({
-    map: hdriTexture,
-    side: THREE.BackSide
+  const hdriMaterial = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    uniforms: {
+      hdriMap: { value: hdriTexture },
+      brightness: { value: 0.72 },
+      dirtStrength: { value: 0.2 },
+      starTightness: { value: 1.5 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D hdriMap;
+      uniform float brightness;
+      uniform float dirtStrength;
+      uniform float starTightness;
+      varying vec2 vUv;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float valueNoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float fbm(vec2 p) {
+        float sum = 0.0;
+        float amp = 0.5;
+        for (int i = 0; i < 4; i++) {
+          sum += valueNoise(p) * amp;
+          p = p * 2.02 + vec2(17.0, 31.0);
+          amp *= 0.5;
+        }
+        return sum;
+      }
+
+      void main() {
+        vec3 tex = texture2D(hdriMap, vUv).rgb;
+        float luma = dot(tex, vec3(0.2126, 0.7152, 0.0722));
+        float starMask = smoothstep(0.45, 0.95, luma);
+
+        float tightenedLuma = pow(max(luma, 0.0), starTightness);
+        float shrinkRatio = mix(1.0, tightenedLuma / max(luma, 0.0001), starMask);
+        vec3 starAdjusted = tex * shrinkRatio;
+
+        float dirt = fbm(vUv * vec2(10.0, 5.6));
+        float grime = 1.0 - dirtStrength * smoothstep(0.42, 0.92, dirt);
+        float grain = (hash(vUv * vec2(2600.0, 1300.0)) - 0.5) * 0.04;
+
+        vec3 color = starAdjusted * brightness * grime + grain;
+        color = mix(color, vec3(dot(color, vec3(0.3333))), 0.08);
+
+        gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+      }
+    `
   });
 
   const sky = new THREE.Mesh(geo, hdriMaterial);
@@ -191,7 +257,7 @@ export function createSkySphere(camera = null) {
   skyGroup.add(sky);
   skyGroup.userData.update = () => {};
 
-  console.log("[Sky] Sky dome ready with plain HDRI background.");
+  console.log("[Sky] Sky dome ready with darker, dirtier HDRI background.");
   return skyGroup;
 }
 
