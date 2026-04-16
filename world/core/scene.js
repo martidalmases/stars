@@ -169,10 +169,10 @@ function createBackgroundStarField(radius = 980, count = 1400) {
 }
 
 export function createSkySphere(camera = null) {
-  console.log("[Sky] Initializing sky dome from HDRI texture (hdri_1)...");
+  console.log("[Sky] Initializing sky dome from HDRI texture (hdri_2)...");
 
   const geo = new THREE.SphereGeometry(1010, 64, 64);
-  const hdriTexture = new THREE.TextureLoader().load("./systems/hdri_1.jpg");
+  const hdriTexture = new THREE.TextureLoader().load("./systems/hdri_2.jpg");
   hdriTexture.colorSpace = THREE.SRGBColorSpace;
   hdriTexture.minFilter = THREE.LinearFilter;
   hdriTexture.magFilter = THREE.LinearFilter;
