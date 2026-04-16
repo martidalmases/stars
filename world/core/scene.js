@@ -181,9 +181,9 @@ export function createSkySphere(camera = null) {
     side: THREE.BackSide,
     uniforms: {
       hdriMap: { value: hdriTexture },
-      brightness: { value: 0.72 },
-      dirtStrength: { value: 0.2 },
-      starTightness: { value: 1.5 }
+      brightness: { value: 0.84 },
+      dirtStrength: { value: 0.12 },
+      starTightness: { value: 1.25 }
     },
     vertexShader: `
       varying vec2 vUv;
@@ -237,11 +237,11 @@ export function createSkySphere(camera = null) {
         vec3 starAdjusted = tex * shrinkRatio;
 
         float dirt = fbm(vUv * vec2(10.0, 5.6));
-        float grime = 1.0 - dirtStrength * smoothstep(0.42, 0.92, dirt);
-        float grain = (hash(vUv * vec2(2600.0, 1300.0)) - 0.5) * 0.04;
+        float grime = 1.0 - dirtStrength * smoothstep(0.5, 0.95, dirt);
+        float grain = (hash(vUv * vec2(2600.0, 1300.0)) - 0.5) * 0.025;
 
         vec3 color = starAdjusted * brightness * grime + grain;
-        color = mix(color, vec3(dot(color, vec3(0.3333))), 0.08);
+        color = mix(color, vec3(dot(color, vec3(0.3333))), 0.04);
 
         gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
       }
