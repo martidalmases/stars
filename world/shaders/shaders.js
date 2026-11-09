@@ -120,11 +120,11 @@ vec3 graniteAt(vec3 base, vec2 p) {
   float grain = vnoise(p * 38.0) * 0.6 + vnoise(p * 90.0) * 0.4;
   vec3 c = base * (0.82 + 0.3 * mottle) * (0.86 + 0.28 * grain);
   // Liquen: taques irregulars amb vores retallades.
-  float lichenField = fbm3(p * 2.2 + 11.0) + (vnoise(p * 16.0) - 0.5) * 0.25;
-  float yellow = smoothstep(0.6, 0.64, lichenField);
+  float lichenField = fbm3(p * 3.6 + 11.0) + (vnoise(p * 22.0) - 0.5) * 0.3;
+  float yellow = smoothstep(0.64, 0.67, lichenField);
   float grey = smoothstep(0.62, 0.66, fbm3(p * 1.7 - 5.0) + (vnoise(p * 14.0) - 0.5) * 0.25);
-  c = mix(c, vec3(0.42, 0.44, 0.2), yellow * 0.75);
-  c = mix(c, vec3(0.42, 0.42, 0.4), grey * 0.5);
+  c = mix(c, vec3(0.38, 0.4, 0.22), yellow * 0.45);
+  c = mix(c, vec3(0.38, 0.38, 0.36), grey * 0.3);
   return c * mix(0.6, 1.0, fissures(p));
 }
 
@@ -345,7 +345,7 @@ const CLOUD_FIELD = /* glsl */ `
 uniform float uTime;
 ${NOISE}
 float cloudField(vec2 p) {
-  vec2 q = p * 0.0062 + vec2(uTime * 0.0021, uTime * 0.0009);
+  vec2 q = p * 0.0042 + vec2(uTime * 0.0016, uTime * 0.0007);
   vec2 warp = vec2(fbm3(q * 1.3 + 3.1), fbm3(q * 1.3 - 1.7));
   return fbm5(q + warp * 0.95 + vec2(uTime * 0.0008, 0.0));
 }
@@ -366,8 +366,8 @@ void main() {
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWorld = wp.xyz;
   float h = cloudField(wp.xz);
-  float h2 = cloudField(wp.xz + normalize(uMoonDir.xz) * 7.0);
-  vShade = smoothstep(0.3, 0.8, 0.55 + (h - h2) * 9.0);
+  float h2 = cloudField(wp.xz + normalize(uMoonDir.xz) * 10.0);
+  vShade = smoothstep(0.25, 0.85, 0.55 + (h - h2) * 11.0);
   vPuff = smoothstep(0.35, 0.68, h);
   wp.y += (h - 0.45) * uCloudAmp;
   gl_Position = projectionMatrix * viewMatrix * wp;

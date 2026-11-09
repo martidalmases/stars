@@ -9,8 +9,8 @@ import { groundHeight, GROUND_Y } from "./terrain.js";
 import { inClearZone } from "../bivac/layout.js";
 
 const STRIKE = 0.45; // direcció de les diàclasis principals (radians)
-const ALONG = 1.35; // mida dels blocs al llarg (m)
-const ACROSS = 0.8; // mida dels blocs de través (m)
+const ALONG = 1.15; // mida dels blocs al llarg (m)
+const ACROSS = 0.7; // mida dels blocs de través (m)
 const EXTENT = 22; // radi de la zona amb paviment (m)
 
 let cached = null;

@@ -165,6 +165,9 @@ class RockBuilder {
   }
 }
 
+// Alçada (respecte del terreny) del cim dels blocs plans de sota el bivac.
+export const FLUSH_OFFSET = -0.01;
+
 // ------------------------------------------------------------------
 // Paviment de blocs de granit
 // Cada bloc: base enterrada, parets, una vora arrodonida (bisell) i el cim
@@ -213,9 +216,9 @@ function createPavement() {
     if (b.flush) {
       // Sota el bivac: plans i just per sota de les esterilles, però per sobre
       // del sòl, de manera que les esquerdes es veuen al voltant.
-      top = b.ground - 0.004 - rng() * 0.012;
-      tx = (rng() - 0.5) * 0.01;
-      tz = (rng() - 0.5) * 0.01;
+      top = b.ground + FLUSH_OFFSET;
+      tx = 0;
+      tz = 0;
     }
     const planeY = (x, z) => top + (x - cx) * tx + (z - cz) * tz;
 

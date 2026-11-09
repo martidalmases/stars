@@ -4,7 +4,8 @@ import { shared } from "../core/environment.js";
 import { EMISSIVE, GLOW } from "../shaders/shaders.js";
 import { smoothstep, clamp, createNoise2D } from "../core/noise.js";
 import { groundHeight } from "../landscape/terrain.js";
-import { slabTopY } from "../landscape/summit.js";
+import { slabTopY, FLUSH_OFFSET } from "../landscape/summit.js";
+import { generatePavement } from "../landscape/pavement.js";
 import { LAYOUT } from "./layout.js";
 
 const COLORS = {
@@ -439,9 +440,20 @@ export function createBivac() {
     group.add(cup);
   });
 
+  // El termo va al centre del bloc pla més proper (mai sobre una esquerda).
   const thermos = createThermos();
-  placeOnGround(thermos, LAYOUT.thermos.x, LAYOUT.thermos.z);
-  thermos.rotation.z = 0.05;
+  const { blocks } = generatePavement();
+  const spot = blocks
+    .filter((b) => b.flush)
+    // Que no quedi sota les esterilles.
+    .filter((b) => !(b.cx > -0.5 && b.cx < 1.2 && b.cz > -2.0 && b.cz < 0.95))
+    .reduce((best, b) => {
+      const d = Math.hypot(b.cx - LAYOUT.thermos.x, b.cz - LAYOUT.thermos.z);
+      return d < best.d ? { d, b } : best;
+    }, { d: Infinity, b: null }).b;
+  const tx = spot ? spot.cx : LAYOUT.thermos.x;
+  const tz = spot ? spot.cz : LAYOUT.thermos.z;
+  thermos.position.set(tx, groundHeight(tx, tz) + FLUSH_OFFSET, tz);
   group.add(thermos);
 
   function update(camera) {
