@@ -12,18 +12,20 @@ export const shared = {
 
   // Direcció cap a la lluna (darrere i a l'esquerra de la càmera).
   uMoonDir: { value: v3(-0.45, 0.5, 0.75).normalize() },
-  uMoonColor: { value: v3(0.34, 0.39, 0.53) },
-  uSkyAmbient: { value: v3(0.09, 0.11, 0.17) },
-  uGroundAmbient: { value: v3(0.035, 0.035, 0.05) },
+  uMoonColor: { value: v3(0.16, 0.19, 0.28) },
+  uSkyAmbient: { value: v3(0.045, 0.056, 0.088) },
+  uGroundAmbient: { value: v3(0.014, 0.014, 0.02) },
 
   uLanternPos: { value: v3(0, -0.4, -2) },
-  uLanternColor: { value: v3(1.0, 0.6, 0.3) },
+  uLanternColor: { value: v3(1.0, 0.52, 0.22) },
   uLanternIntensity: { value: 1.0 },
 
-  // Color de la boira de distància: el mateix to que el cel a l'horitzó.
-  uHazeColor: { value: v3(0.17, 0.205, 0.275) },
+  // Boira de distància: es fon amb la claror de l'horitzó.
+  uHazeColor: { value: v3(0.1, 0.122, 0.178) },
+  // Boira baixa que s'acumula sobre el mar de núvols i a les valls.
+  uMistColor: { value: v3(0.085, 0.105, 0.155) },
   uCloudY: { value: CLOUD_Y },
-  uCloudColor: { value: v3(0.31, 0.36, 0.46) }
+  uCloudColor: { value: v3(0.1, 0.125, 0.18) }
 };
 
 export function updateEnvironment(t) {
@@ -34,5 +36,5 @@ export function updateEnvironment(t) {
 
   // Parpelleig del fanalet.
   shared.uLanternIntensity.value =
-    1.0 + 0.06 * Math.sin(t * 11.0) + 0.04 * Math.sin(t * 23.7 + 0.4) + 0.03 * Math.sin(t * 5.3);
+    1.25 + 0.06 * Math.sin(t * 11.0) + 0.04 * Math.sin(t * 23.7 + 0.4) + 0.03 * Math.sin(t * 5.3);
 }

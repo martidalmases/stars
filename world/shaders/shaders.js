@@ -54,26 +54,31 @@ uniform vec3 uLanternColor;
 uniform float uLanternIntensity;
 uniform vec3 uHazeColor;
 
+// Llum de lluna per franges (aspecte pintat, com a Cairn) + fanalet càlid.
 vec3 shadeStylized(vec3 albedo, vec3 n, vec3 wp) {
   float ndl = dot(n, uMoonDir);
-  float moon = smoothstep(-0.12, 0.5, ndl);
+  float moon = smoothstep(-0.04, 0.12, ndl) * 0.55 + smoothstep(0.38, 0.55, ndl) * 0.45;
   vec3 ambient = mix(uGroundAmbient, uSkyAmbient, n.y * 0.5 + 0.5);
 
   vec3 toLamp = uLanternPos - wp;
   float d = length(toLamp);
-  float att = uLanternIntensity / (1.0 + d * d * 1.7);
-  float wrap = max(dot(n, toLamp / max(d, 0.0001)), 0.0) * 0.75 + 0.25;
+  float att = uLanternIntensity / (1.0 + d * d * 1.15);
+  att *= 1.0 - smoothstep(3.5, 7.0, d);
+  float facing = dot(n, toLamp / max(d, 0.0001));
+  float wrap = smoothstep(-0.2, 0.25, facing) * 0.8 + 0.2;
   vec3 lamp = uLanternColor * att * wrap;
 
   vec3 v = normalize(cameraPosition - wp);
-  float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * moon;
+  float rim = pow(1.0 - max(dot(n, v), 0.0), 4.0) * moon;
 
-  return albedo * (ambient + uMoonColor * moon + lamp) + uMoonColor * rim * 0.06;
+  return albedo * (ambient + uMoonColor * moon + lamp) + uMoonColor * rim * 0.05;
 }
 
 vec3 applyHaze(vec3 col, vec3 wp) {
   float d = length(wp - cameraPosition);
-  float f = clamp(pow(d / 1050.0, 1.25), 0.0, 1.0) * 0.8;
+  float f = (1.0 - exp(-d / 520.0)) * 0.95;
+  // Una mica de boira fins i tot a prop: suavitza el fons del cim.
+  f = max(f, smoothstep(4.0, 40.0, d) * 0.25);
   return mix(col, uHazeColor, f);
 }
 `;
@@ -175,11 +180,13 @@ export const MOUNTAIN = {
   vertex: /* glsl */ `
 attribute float aH;
 varying vec3 vWorld;
+varying vec3 vNormalW;
 varying float vH;
 
 void main() {
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWorld = wp.xyz;
+  vNormalW = normalize(mat3(modelMatrix) * normal);
   vH = aH;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
@@ -187,41 +194,45 @@ void main() {
   fragment: /* glsl */ `
 uniform vec3 uMoonDir;
 uniform vec3 uHazeColor;
-uniform vec3 uCloudColor;
+uniform vec3 uMistColor;
 uniform float uCloudY;
 uniform float uSnowLine;
 uniform float uFogAmount;
 varying vec3 vWorld;
+varying vec3 vNormalW;
 varying float vH;
 ${NOISE}
 
 void main() {
-  vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
+  // Barreja de normal suau i de faceta: plans amples, com pintats.
+  vec3 face = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
+  vec3 n = normalize(mix(normalize(vNormalW), face, 0.3));
+  if (n.y < 0.0) n = -n;
+
   float ndl = dot(n, uMoonDir);
-  float light = smoothstep(-0.18, 0.55, ndl);
+  float light = smoothstep(-0.02, 0.14, ndl) * 0.6 + smoothstep(0.4, 0.58, ndl) * 0.4;
 
-  float nz = vnoise(vWorld.xz * 0.07) * 0.6 + vnoise(vWorld.xz * 0.31) * 0.4;
-  float snow = smoothstep(
-    uSnowLine - 0.1,
-    uSnowLine + 0.05,
-    vH + (n.y - 0.62) * 0.5 + (nz - 0.5) * 0.24
-  );
+  float nz = vnoise(vWorld.xz * 0.045) * 0.6 + vnoise(vWorld.xz * 0.19) * 0.4;
+  float snowMask = vH + (n.y - 0.6) * 0.55 + (nz - 0.5) * 0.3;
+  float snow = smoothstep(uSnowLine - 0.03, uSnowLine + 0.03, snowMask);
 
-  vec3 rockShadow = vec3(0.055, 0.065, 0.1);
-  vec3 rockLit = vec3(0.17, 0.18, 0.235);
-  vec3 snowShadow = vec3(0.2, 0.25, 0.37);
-  vec3 snowLit = vec3(0.66, 0.72, 0.86);
+  vec3 rockShadow = vec3(0.026, 0.032, 0.05);
+  vec3 rockLit = vec3(0.075, 0.085, 0.12);
+  vec3 snowShadow = vec3(0.1, 0.125, 0.19);
+  vec3 snowLit = vec3(0.34, 0.39, 0.52);
 
-  vec3 rock = mix(rockShadow, rockLit, light) * (0.82 + 0.36 * nz);
+  vec3 rock = mix(rockShadow, rockLit, light) * (0.85 + 0.3 * nz);
   vec3 sn = mix(snowShadow, snowLit, light);
   vec3 col = mix(rock, sn, snow);
 
+  // Perspectiva atmosfèrica: com més lluny, més es fon amb la claror de l'horitzó.
   float dist = length(vWorld - cameraPosition);
-  float f = clamp(pow(dist / 1050.0, 1.25), 0.0, 1.0) * uFogAmount;
+  float f = (1.0 - exp(-dist / 430.0)) * uFogAmount;
   col = mix(col, uHazeColor, f);
 
-  float low = smoothstep(uCloudY + 30.0, uCloudY - 1.0, vWorld.y);
-  col = mix(col, uCloudColor, low * 0.85);
+  // Boira baixa a les valls, sobre el mar de núvols.
+  float low = smoothstep(uCloudY + 55.0, uCloudY - 2.0, vWorld.y);
+  col = mix(col, uMistColor, low * 0.92);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -268,13 +279,13 @@ void main() {
   float h = cloudField(p);
   vec2 ld = normalize(uMoonDir.xz);
   float h2 = cloudField(p + ld * 7.0);
-  float shade = clamp(0.62 + (h - h2) * 7.5, 0.0, 1.0);
+  float shade = smoothstep(0.35, 0.75, 0.55 + (h - h2) * 7.5);
   float puff = smoothstep(0.3, 0.72, h);
   vec3 col = mix(uCloudShadow, uCloudLit, shade * 0.65 + puff * 0.35);
 
   float dist = length(vWorld - cameraPosition);
-  float f = smoothstep(120.0, 990.0, dist);
-  col = mix(col, uHazeColor, f * 0.88);
+  float f = 1.0 - exp(-dist / 380.0);
+  col = mix(col, uHazeColor, f * 0.9);
   gl_FragColor = vec4(col, 1.0);
 }
 `

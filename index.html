@@ -159,6 +159,18 @@
       opacity: 1;
       pointer-events: auto;
     }
+
+    /* Indicador de versió (temporal, per saber què està publicat). */
+    #version-tag {
+      position: fixed;
+      right: 10px;
+      bottom: 8px;
+      z-index: 20;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: #888;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -182,7 +194,38 @@
   </main>
 
   <div id="fade-layer"></div>
+  <div id="version-tag"></div>
 
+  <script>
+    // ===== Versió (temporal) =====
+    // version.json es llegeix sense memòria cau: és el que hi ha publicat ara mateix.
+    // L'escena també diu la seva versió; si no coincideixen, el navegador té codi vell.
+    (function () {
+      const tag = document.getElementById("version-tag");
+      let published = "?";
+      let sceneVersion = null;
+
+      function render() {
+        let text = `versió ${published}`;
+        if (sceneVersion && sceneVersion !== published) {
+          text += ` · escena ${sceneVersion} (codi antic: refresca amb Ctrl+Shift+R)`;
+        }
+        tag.textContent = text;
+      }
+
+      fetch(`version.json?t=${Date.now()}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .then((data) => { published = data.version; render(); })
+        .catch(() => render());
+
+      window.addEventListener("message", (event) => {
+        if (event.data && event.data.sceneVersion) {
+          sceneVersion = event.data.sceneVersion;
+          render();
+        }
+      });
+    })();
+  </script>
   <script>
     const sceneFrame = document.getElementById("scene-frame");
     const miniGame = document.getElementById("mini-game");

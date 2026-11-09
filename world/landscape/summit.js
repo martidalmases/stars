@@ -18,10 +18,10 @@ function createGround() {
   const colors = [];
   const indices = [];
 
-  const grass = [0.2, 0.235, 0.15];
-  const dryGrass = [0.3, 0.29, 0.19];
-  const rock = [0.35, 0.345, 0.37];
-  const gravel = [0.29, 0.27, 0.255];
+  const grass = [0.15, 0.165, 0.11];
+  const dryGrass = [0.24, 0.2, 0.13];
+  const rock = [0.25, 0.25, 0.27];
+  const gravel = [0.2, 0.19, 0.18];
 
   for (let j = 0; j <= nR; j += 1) {
     const r = maxR * Math.pow(j / nR, 1.75);
@@ -83,8 +83,14 @@ class RockBuilder {
     this.colors = [];
   }
 
-  add({ x, y, z, sx, sy, sz, rotY = 0, tilt = 0, color = null, roughness = 0.32, flatTop = false }) {
+  add({ x, y, z, sx, sy, sz, rotY = 0, tilt = 0, color = null, roughness = 0.32, flatTop = false, cuts = 3 }) {
     const base = new THREE.IcosahedronGeometry(1, 1);
+    // Talls plans aleatoris: donen cares netes, com roca partida.
+    const planes = [];
+    for (let c = 0; c < cuts; c += 1) {
+      const n = new THREE.Vector3(this.rng() * 2 - 1, this.rng() * 1.2 - 0.2, this.rng() * 2 - 1).normalize();
+      planes.push({ n, d: 0.55 + this.rng() * 0.3 });
+    }
     const pos = base.attributes.position;
     const seed = this.rng() * 100;
     const v = new THREE.Vector3();
@@ -96,7 +102,7 @@ class RockBuilder {
 
     const shade = 0.88 + this.rng() * 0.24;
     const warm = this.rng() * 0.04;
-    const col = color || [0.37 * shade + warm, 0.36 * shade + warm * 0.6, 0.39 * shade];
+    const col = color || [0.27 * shade + warm, 0.27 * shade + warm * 0.6, 0.3 * shade];
 
     for (let i = 0; i < pos.count; i += 1) {
       v.fromBufferAttribute(pos, i);
@@ -107,8 +113,12 @@ class RockBuilder {
       // Base aplanada perquè les roques reposin a terra.
       if (v.y < -0.35) d *= 0.85;
       v.multiplyScalar(d);
-      if (v.y < -0.45) v.y = -0.45 - (v.y + 0.45) * 0.3;
+      if (v.y < -0.45) v.y = -0.45; // base plana: reposa a terra
       if (flatTop && v.y > 0.55) v.y = 0.55;
+      planes.forEach(({ n: pn, d: pd }) => {
+        const k = v.dot(pn);
+        if (k > pd) v.addScaledVector(pn, pd - k);
+      });
       v.applyMatrix4(m);
       this.positions.push(v.x, v.y, v.z);
       const lichen = clamp(n * 0.5 + 0.2, 0, 1) * 0.05;
@@ -202,22 +212,27 @@ function addScatteredRocks(builder) {
 function addFita(builder) {
   const { x, z } = LAYOUT.fita;
   const rng = mulberry32(7);
-  let y = groundHeight(x, z) + 0.02;
-  const radii = [0.44, 0.38, 0.33, 0.28, 0.24, 0.2, 0.16, 0.12];
+  // Pedres amb base i cim plans, apilades exactament l'una sobre l'altra.
+  // Al model local, la base és a -0.45 i el cim a +0.55 (alçada = sy).
+  let y = groundHeight(x, z) - 0.03;
+  const radii = [0.4, 0.36, 0.31, 0.27, 0.23, 0.19, 0.15, 0.11];
   radii.forEach((r, i) => {
-    const sy = r * (0.34 + rng() * 0.1);
+    const sy = r * (0.46 + rng() * 0.12);
+    const ox = i === 0 ? 0 : (rng() - 0.5) * 0.035;
+    const oz = i === 0 ? 0 : (rng() - 0.5) * 0.035;
     builder.add({
-      x: x + (rng() - 0.5) * 0.06 * i,
-      y: y + sy * 0.7,
-      z: z + (rng() - 0.5) * 0.06 * i,
+      x: x + ox,
+      y: y + sy * 0.45,
+      z: z + oz,
       sx: r,
       sy,
-      sz: r * (0.85 + rng() * 0.2),
+      sz: r * (0.82 + rng() * 0.18),
       rotY: rng() * Math.PI,
-      tilt: (rng() - 0.5) * 0.12,
-      roughness: 0.22
+      roughness: 0.18,
+      flatTop: true,
+      cuts: 2
     });
-    y += sy * 1.25;
+    y += sy * 0.97;
   });
 }
 
@@ -232,7 +247,8 @@ function addSlab(builder) {
     sz,
     rotY: 0.35,
     roughness: 0.12,
-    flatTop: true
+    flatTop: true,
+    cuts: 0
   });
 }
 

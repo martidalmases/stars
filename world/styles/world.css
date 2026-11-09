@@ -311,3 +311,37 @@
     align-items: center;
   }
 }
+
+/* ===== Ambient: vinyeta i gra de pel·lícula ===== */
+#mood-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  background: radial-gradient(ellipse 85% 75% at 50% 52%, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 4, 0.62) 100%);
+}
+
+#mood-grain {
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  z-index: 12;
+  opacity: 0.075;
+  background-image: var(--grain-texture);
+  background-size: 180px 180px;
+  animation: film-grain 0.9s steps(7) infinite;
+}
+
+@keyframes film-grain {
+  0% { transform: translate(0, 0); }
+  15% { transform: translate(-4%, -6%); }
+  30% { transform: translate(5%, 2%); }
+  45% { transform: translate(-2%, 7%); }
+  60% { transform: translate(7%, -3%); }
+  75% { transform: translate(-6%, 4%); }
+  90% { transform: translate(3%, -7%); }
+  100% { transform: translate(0, 0); }
+}

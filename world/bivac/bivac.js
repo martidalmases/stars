@@ -8,11 +8,10 @@ import { slabTopY } from "../landscape/summit.js";
 import { LAYOUT } from "./layout.js";
 
 const COLORS = {
-  ownBag: [0.66, 0.2, 0.13],
-  ownBagInner: [0.85, 0.55, 0.25],
-  partnerBag: [0.16, 0.36, 0.42],
-  ownMat: [0.8, 0.62, 0.2],
-  partnerMat: [0.33, 0.52, 0.34],
+  ownBag: [0.5, 0.14, 0.09],
+  partnerBag: [0.11, 0.24, 0.3],
+  ownMat: [0.55, 0.42, 0.14],
+  partnerMat: [0.2, 0.32, 0.22],
   strap: [0.08, 0.08, 0.09],
   metal: [0.3, 0.31, 0.34],
   thermos: [0.18, 0.3, 0.24]
@@ -39,7 +38,7 @@ function sleepingBagGeometry({ length = 1.95, width = 0.33, height = 0.2, baffle
 
     const startCap = Math.pow(Math.sin((Math.PI / 2) * clamp(t / 0.07, 0, 1)), 0.55);
     const endCap = Math.pow(Math.sin((Math.PI / 2) * clamp((1 - t) / 0.06, 0, 1)), 0.55);
-    const baffle = 1 + 0.045 * Math.cos(2 * Math.PI * baffles * t);
+    const baffle = 1 + 0.028 * Math.cos(2 * Math.PI * baffles * t) + 0.012 * Math.sin(2 * Math.PI * 3.3 * t + 1.0);
     w *= startCap * endCap * baffle;
     h *= startCap * endCap * baffle;
 
@@ -74,6 +73,44 @@ function placeOnGround(obj, x, z, lift = 0) {
   obj.position.set(x, groundHeight(x, z) + lift, z);
 }
 
+// Caixa amb cantonades arrodonides (per a motxilles i bosses).
+function roundedBox(w, h, d, r, seg = 4) {
+  const geo = new THREE.BoxGeometry(w, h, d, seg * 2, seg * 2, seg * 2);
+  const pos = geo.attributes.position;
+  const v = new THREE.Vector3();
+  const inner = new THREE.Vector3(w / 2 - r, h / 2 - r, d / 2 - r);
+  for (let i = 0; i < pos.count; i += 1) {
+    v.fromBufferAttribute(pos, i);
+    const c = new THREE.Vector3(
+      THREE.MathUtils.clamp(v.x, -inner.x, inner.x),
+      THREE.MathUtils.clamp(v.y, -inner.y, inner.y),
+      THREE.MathUtils.clamp(v.z, -inner.z, inner.z)
+    );
+    const off = v.clone().sub(c);
+    if (off.lengthSq() > 0) off.setLength(r);
+    pos.setXYZ(i, c.x + off.x, c.y + off.y, c.z + off.z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Bombat suau (com un farcit de tela).
+function puff(geo, amount) {
+  const pos = geo.attributes.position;
+  geo.computeBoundingBox();
+  const size = new THREE.Vector3();
+  geo.boundingBox.getSize(size);
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i) / (size.x / 2);
+    const y = pos.getY(i) / (size.y / 2);
+    const z = pos.getZ(i);
+    const k = 1 + amount * (1 - Math.min(1, x * x)) * (1 - Math.min(1, y * y));
+    pos.setZ(i, z * k);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
 function createMat({ x, z, width, length, rot }, color) {
   const geo = new THREE.BoxGeometry(width, 0.028, length, 1, 1, 8);
   // Franges de l'esterilla d'escuma.
@@ -97,20 +134,16 @@ function createBag({ x, zHead, length, rot }, color, { closedHood = false } = {}
   group.add(bag);
 
   if (closedHood) {
-    // Caputxa tancada amb el cordó: algú dorm arraulit a dins.
-    const knot = new THREE.Mesh(
-      new THREE.SphereGeometry(0.018, 8, 6),
-      stylizedMaterial({ color: COLORS.strap })
-    );
-    knot.position.set(0.04, 0.2, -0.05);
-    group.add(knot);
-    const cord = new THREE.Mesh(
-      new THREE.TorusGeometry(0.075, 0.006, 6, 20),
-      stylizedMaterial({ color: [0.75, 0.75, 0.72] })
-    );
-    cord.position.set(0, 0.13, -0.03);
-    cord.rotation.y = 0.2;
-    group.add(cord);
+    // Caputxa tancada amb el cordó estirat: algú dorm arraulit a dins.
+    const dark = stylizedMaterial({ color: color.map((c) => c * 0.45) });
+    const pucker = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), dark);
+    pucker.scale.set(1.25, 0.9, 0.45);
+    pucker.position.set(0, 0.12, 0.02);
+    group.add(pucker);
+    const toggle = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.02, 3, 6), stylizedMaterial({ color: COLORS.strap }));
+    toggle.position.set(0.05, 0.075, 0.06);
+    toggle.rotation.z = 0.4;
+    group.add(toggle);
   }
 
   group.position.set(x, groundHeight(x, zHead - length / 2) + 0.03, zHead);
@@ -118,46 +151,79 @@ function createBag({ x, zHead, length, rot }, color, { closedHood = false } = {}
   return group;
 }
 
-function createBackpack(color, { lying = false } = {}) {
+// Motxilla de muntanya. Local: l'esquena mira a -z, la butxaca davantera a +z,
+// la base a y = 0.
+function createBackpack(color) {
   const group = new THREE.Group();
-  const mat = stylizedMaterial({ color });
-  const dark = stylizedMaterial({ color: color.map((c) => c * 0.55) });
+  const main = stylizedMaterial({ color });
+  const dark = stylizedMaterial({ color: color.map((c) => c * 0.6) });
   const strapMat = stylizedMaterial({ color: COLORS.strap });
+  const buckle = stylizedMaterial({ color: [0.32, 0.32, 0.34] });
 
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.3, 6, 14), mat);
-  body.scale.set(1.15, 1, 0.72);
+  // Cos principal, una mica més estret a dalt.
+  const bodyGeo = puff(roundedBox(0.34, 0.56, 0.22, 0.07, 3), 0.18);
+  const bp = bodyGeo.attributes.position;
+  for (let i = 0; i < bp.count; i += 1) {
+    const k = 1 - 0.12 * (bp.getY(i) / 0.28 + 1) * 0.5;
+    bp.setX(i, bp.getX(i) * k);
+  }
+  bodyGeo.computeVertexNormals();
+  const body = new THREE.Mesh(bodyGeo, main);
   body.position.y = 0.3;
   group.add(body);
 
-  const lid = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.16, 6, 12), dark);
-  lid.rotation.z = Math.PI / 2;
-  lid.scale.set(0.6, 1, 0.95);
-  lid.position.set(0, 0.56, 0.02);
+  // Tapa superior que sobresurt una mica.
+  const lid = new THREE.Mesh(puff(roundedBox(0.32, 0.1, 0.25, 0.045, 3), 0.25), dark);
+  lid.position.set(0, 0.6, 0.015);
+  lid.rotation.x = 0.06;
   group.add(lid);
 
-  const pocket = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.1, 4, 10), dark);
-  pocket.scale.set(1.2, 1, 0.45);
-  pocket.position.set(0, 0.24, 0.1);
+  // Butxaca davantera.
+  const pocket = new THREE.Mesh(puff(roundedBox(0.24, 0.24, 0.06, 0.03, 2), 0.35), dark);
+  pocket.position.set(0, 0.22, 0.125);
   group.add(pocket);
 
-  [-0.08, 0.08].forEach((sx) => {
-    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.42, 0.015), strapMat);
-    strap.position.set(sx, 0.32, -0.115);
-    strap.rotation.x = 0.08;
+  // Corretges de compressió laterals i de la tapa.
+  [0.2, 0.38].forEach((y) => {
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.022, 0.235), strapMat);
+    strap.position.set(0, y, 0.004);
+    group.add(strap);
+    [-1, 1].forEach((side) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.03, 0.028), buckle);
+      b.position.set(side * 0.181, y, 0.06);
+      group.add(b);
+    });
+  });
+  [-0.07, 0.07].forEach((x) => {
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.012, 0.27), strapMat);
+    strap.position.set(x, 0.655, 0.015);
     group.add(strap);
   });
 
-  // Esterilla enrotllada lligada a sota.
-  const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 14), stylizedMaterial({ color: [0.5, 0.52, 0.55] }));
-  roll.rotation.z = Math.PI / 2;
-  roll.position.set(0, 0.09, 0.03);
-  group.add(roll);
+  // Tirants a l'esquena.
+  [-0.08, 0.08].forEach((x) => {
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(x * 0.7, 0.52, -0.11),
+      new THREE.Vector3(x, 0.32, -0.19),
+      new THREE.Vector3(x * 1.4, 0.1, -0.11)
+    );
+    const strap = new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.018, 6, false), strapMat);
+    strap.scale.set(1.6, 1, 0.6);
+    group.add(strap);
+  });
 
-  if (lying) {
-    group.rotation.set(0, 0.9, Math.PI / 2 - 0.12);
-  } else {
-    group.rotation.set(-0.2, 0.55, 0.03);
-  }
+  // Esterilla enrotllada lligada a sota, amb dues cintes.
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.44, 16), stylizedMaterial({ color: [0.32, 0.34, 0.36] }));
+  roll.rotation.z = Math.PI / 2;
+  roll.position.set(0, 0.065, 0.05);
+  group.add(roll);
+  [-0.12, 0.12].forEach((x) => {
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.008, 6, 16), strapMat);
+    band.rotation.y = Math.PI / 2;
+    band.position.set(x, 0.065, 0.05);
+    group.add(band);
+  });
+
   return group;
 }
 
@@ -265,24 +331,37 @@ export function createBivac() {
   group.add(createBag(LAYOUT.ownBag, COLORS.ownBag));
   group.add(createBag(LAYOUT.partnerBag, COLORS.partnerBag, { closedHood: true }));
 
-  const packA = createBackpack(LAYOUT.packA.color);
+  // Motxilla dreta, recolzada enrere i girada cap a tu.
+  const packA = new THREE.Group();
+  const packAInner = createBackpack(LAYOUT.packA.color);
+  packAInner.rotation.x = 0.1;
+  packA.add(packAInner);
   placeOnGround(packA, LAYOUT.packA.x, LAYOUT.packA.z);
+  packA.rotation.y = Math.atan2(-LAYOUT.packA.x, -LAYOUT.packA.z) + 0.25;
   group.add(packA);
 
-  const packB = createBackpack(LAYOUT.packB.color, { lying: true });
-  placeOnGround(packB, LAYOUT.packB.x, LAYOUT.packB.z, 0.13);
+  // Motxilla estirada d'esquena a terra.
+  const packB = new THREE.Group();
+  const packBInner = createBackpack(LAYOUT.packB.color);
+  packBInner.rotation.x = -Math.PI / 2;
+  packBInner.position.y = 0.12;
+  packB.add(packBInner);
+  placeOnGround(packB, LAYOUT.packB.x, LAYOUT.packB.z);
+  packB.rotation.y = 2.3;
   group.add(packB);
 
-  // Bastons recolzats a la motxilla.
-  const ax = LAYOUT.packA.x;
-  const az = LAYOUT.packA.z;
+  // Bastons recolzats a la motxilla dreta: el puny descansa sobre la tapa.
+  packA.updateMatrixWorld(true);
+  const rest = new THREE.Vector3(0, 0.6, -0.02).applyMatrix4(packAInner.matrixWorld);
   [
-    [new THREE.Vector3(ax - 0.42, 0, az - 0.32), new THREE.Vector3(ax - 0.02, 0.92, az + 0.12)],
-    [new THREE.Vector3(ax - 0.3, 0, az - 0.45), new THREE.Vector3(ax - 0.16, 0.95, az + 0.16)]
-  ].forEach(([from, to]) => {
-    const g = groundHeight(from.x, from.z);
-    from.y += g;
-    to.y += g;
+    [-0.36, 0.22, 0.04],
+    [-0.28, 0.34, -0.04]
+  ].forEach(([dx, dz, spread]) => {
+    const from = new THREE.Vector3(rest.x + dx, 0, rest.z + dz);
+    from.y = groundHeight(from.x, from.z);
+    const top = rest.clone().add(new THREE.Vector3(spread, 0.0, spread));
+    const dir = top.clone().sub(from).normalize();
+    const to = from.clone().addScaledVector(dir, 1.1);
     group.add(createPole(from, to));
   });
 

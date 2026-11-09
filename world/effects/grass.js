@@ -5,7 +5,7 @@ import { groundHeight, groundSlope, edgeRadius } from "../landscape/terrain.js";
 import { inClearZone } from "../bivac/layout.js";
 
 // Geometria d'una mata d'herba (alçada 1, s'escala per instància).
-function tuftGeometry(rng, { blades = 9, root = [0.13, 0.15, 0.09], tip = [0.36, 0.4, 0.22] } = {}) {
+function tuftGeometry(rng, { blades = 9, root = [0.05, 0.06, 0.04], tip = [0.22, 0.2, 0.12] } = {}) {
   const positions = [];
   const colors = [];
   const heights = [];
@@ -17,7 +17,7 @@ function tuftGeometry(rng, { blades = 9, root = [0.13, 0.15, 0.09], tip = [0.36,
     const leanDir = rng() * Math.PI * 2;
     const lean = 0.12 + rng() * 0.4;
     const h = 0.55 + rng() * 0.45;
-    const w = 0.035 + rng() * 0.03;
+    const w = 0.045 + rng() * 0.035;
     const bx = (rng() - 0.5) * 0.12;
     const bz = (rng() - 0.5) * 0.12;
     const px = Math.cos(facing);
@@ -57,12 +57,12 @@ function tuftGeometry(rng, { blades = 9, root = [0.13, 0.15, 0.09], tip = [0.36,
 }
 
 // Flor alpina: tija fina amb una corol·la de pètals al capdamunt.
-function flowerGeometry(petal = [0.82, 0.84, 0.88]) {
+function flowerGeometry(petal = [0.6, 0.62, 0.66]) {
   const positions = [];
   const colors = [];
   const heights = [];
   const indices = [];
-  const stem = [0.2, 0.26, 0.15];
+  const stem = [0.09, 0.11, 0.07];
   const segs = 4;
   const w = 0.012;
 
@@ -81,7 +81,7 @@ function flowerGeometry(petal = [0.82, 0.84, 0.88]) {
   const center = positions.length / 3;
   const top = [0.08, 1.0, 0];
   positions.push(...top);
-  colors.push(0.85, 0.72, 0.3);
+  colors.push(0.6, 0.48, 0.2);
   heights.push(1);
   const petals = 6;
   for (let p = 0; p < petals; p += 1) {
@@ -155,26 +155,26 @@ export function createVegetation() {
   group.add(
     scatter({
       geometry: tuftGeometry(rng),
-      count: 1300,
+      count: 1400,
       seed: 61,
-      minScale: 0.1,
-      maxScale: 0.32,
+      minScale: 0.08,
+      maxScale: 0.24,
       clump: 0.45,
       tints: [
         [1, 1, 1],
-        [1.15, 1.05, 0.8],
-        [0.9, 1.05, 1.0]
+        [1.25, 1.0, 0.7],
+        [0.85, 0.95, 1.0]
       ]
     })
   );
 
   group.add(
     scatter({
-      geometry: tuftGeometry(rng, { blades: 14, root: [0.16, 0.15, 0.09], tip: [0.46, 0.43, 0.26] }),
-      count: 380,
+      geometry: tuftGeometry(rng, { blades: 16, root: [0.06, 0.05, 0.03], tip: [0.3, 0.22, 0.11] }),
+      count: 420,
       seed: 67,
-      minScale: 0.22,
-      maxScale: 0.42,
+      minScale: 0.16,
+      maxScale: 0.32,
       clump: 0.3,
       density: 0.15,
       tints: [[1, 1, 1], [1.1, 1.0, 0.85]]
@@ -183,7 +183,7 @@ export function createVegetation() {
 
   group.add(
     scatter({
-      geometry: flowerGeometry([0.84, 0.86, 0.9]),
+      geometry: flowerGeometry([0.62, 0.64, 0.68]),
       count: 140,
       seed: 71,
       minScale: 0.1,
@@ -196,7 +196,7 @@ export function createVegetation() {
 
   group.add(
     scatter({
-      geometry: flowerGeometry([0.55, 0.52, 0.86]),
+      geometry: flowerGeometry([0.36, 0.33, 0.58]),
       count: 70,
       seed: 73,
       minScale: 0.09,

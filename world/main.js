@@ -16,6 +16,11 @@ import { StoryStarSystem } from "./systems/stars.js";
 import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
+// Versió de l'escena (temporal). Ha de coincidir amb version.json.
+const SCENE_VERSION = "0.3";
+window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
+console.log(`[laurins] escena versió ${SCENE_VERSION}`);
+
 // ==============================
 // Escena bàsica
 // ==============================
@@ -60,6 +65,28 @@ document.addEventListener("pointerlockchange", () => {
 });
 
 // ==============================
+// Gra de pel·lícula (textura de soroll generada un cop)
+// ==============================
+
+(function createGrainTexture() {
+  const size = 180;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const img = ctx.createImageData(size, size);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() * 255;
+    img.data[i] = v;
+    img.data[i + 1] = v;
+    img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  document.documentElement.style.setProperty("--grain-texture", `url(${canvas.toDataURL()})`);
+})();
+
+// ==============================
 // Paisatge
 // ==============================
 
@@ -70,6 +97,19 @@ scene.add(createCloudSea());
 
 const highClouds = createHighClouds();
 scene.add(highClouds.group);
+
+// Bancs de boira entre les serralades, just per sobre del mar de núvols.
+const mistBanks = createHighClouds({
+  count: 14,
+  seed: 7,
+  elevation: [-3.2, -0.6],
+  distance: [230, 640],
+  widthRange: [220, 420],
+  color: [0.1, 0.122, 0.175],
+  opacity: [0.45, 0.75],
+  speedDeg: [0.05, 0.12]
+});
+scene.add(mistBanks.group);
 
 scene.add(createSummit());
 scene.add(createVegetation());
@@ -173,6 +213,7 @@ function animate() {
   updateCamera();
   storyStars.update();
   highClouds.update(delta);
+  mistBanks.update(delta);
   shootingStars.update(delta);
   bivac.update(camera);
   sky.userData.update?.(delta);

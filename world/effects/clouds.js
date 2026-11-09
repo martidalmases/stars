@@ -15,8 +15,8 @@ export function createCloudSea() {
     uniforms: {
       ...shared,
       uCloudAmp: { value: 14 },
-      uCloudLit: { value: new THREE.Vector3(0.43, 0.48, 0.6) },
-      uCloudShadow: { value: new THREE.Vector3(0.17, 0.21, 0.3) }
+      uCloudLit: { value: new THREE.Vector3(0.16, 0.19, 0.265) },
+      uCloudShadow: { value: new THREE.Vector3(0.05, 0.062, 0.09) }
     },
     vertexShader: CLOUD_SEA.vertex,
     fragmentShader: CLOUD_SEA.fragment
@@ -70,20 +70,29 @@ function createStratusTexture(seed) {
   return tex;
 }
 
-export function createHighClouds({ count = 8 } = {}) {
-  const rng = mulberry32(99);
+export function createHighClouds({
+  count = 8,
+  seed = 99,
+  elevation = [4, 15],
+  distance = [520, 780],
+  widthRange = [260, 500],
+  color = [0.17, 0.2, 0.28],
+  opacity = [0.3, 0.5],
+  speedDeg = [0.12, 0.28]
+} = {}) {
+  const rng = mulberry32(seed);
   const group = new THREE.Group();
   const clouds = [];
   const deg = THREE.MathUtils.degToRad;
   const limit = deg(128);
 
   for (let i = 0; i < count; i += 1) {
-    const width = 260 + rng() * 240;
+    const width = widthRange[0] + rng() * (widthRange[1] - widthRange[0]);
     const geo = new THREE.PlaneGeometry(width, width * (0.2 + rng() * 0.1));
     const mat = new THREE.ShaderMaterial({
       uniforms: {
-        uMap: { value: createStratusTexture(200 + i) },
-        uColor: { value: new THREE.Vector3(0.44, 0.49, 0.61) },
+        uMap: { value: createStratusTexture(seed * 3 + i) },
+        uColor: { value: new THREE.Vector3(color[0], color[1], color[2]) },
         uOpacity: { value: 0 }
       },
       vertexShader: HIGH_CLOUD.vertex,
@@ -99,10 +108,10 @@ export function createHighClouds({ count = 8 } = {}) {
     clouds.push({
       mesh,
       az: -limit + (2 * limit * (i + rng() * 0.7)) / count,
-      el: deg(4 + rng() * 11),
-      dist: 520 + rng() * 260,
-      speed: deg(0.12 + rng() * 0.16) * (rng() < 0.75 ? 1 : -1),
-      opacity: 0.22 + rng() * 0.18
+      el: deg(elevation[0] + rng() * (elevation[1] - elevation[0])),
+      dist: distance[0] + rng() * (distance[1] - distance[0]),
+      speed: deg(speedDeg[0] + rng() * (speedDeg[1] - speedDeg[0])) * (rng() < 0.75 ? 1 : -1),
+      opacity: opacity[0] + rng() * (opacity[1] - opacity[0])
     });
   }
 
