@@ -1,62 +1,63 @@
 {
   "slides": [
     {
-      "title": "Memory 1 \u2014 First Spark",
-      "text": "A quiet beginning. The first story star is your entry point into the constellation.",
-      "image": "./star.png"
+      "title": "Record 1",
+      "text": "Aquí va el text del record 1. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/01.jpg"
     },
     {
-      "title": "Memory 2 \u2014 Turning Point",
-      "text": "A small shift in direction changes the path. This panel is easy to edit later.",
-      "image": "./star.png"
+      "title": "Record 2",
+      "text": "Aquí va el text del record 2. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/02.jpg"
     },
     {
-      "title": "Memory 3 \u2014 Echo",
-      "text": "A repeated signal comes back stronger, shaping the route through the night.",
-      "image": "./star.png"
+      "title": "Record 3",
+      "text": "Aquí va el text del record 3. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/03.jpg"
     },
     {
-      "title": "Memory 4 \u2014 Drift",
-      "text": "Not everything is linear. This memory marks a curved detour before the climb.",
-      "image": "./star.png"
+      "title": "Record 4",
+      "text": "Aquí va el text del record 4. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/04.jpg"
     },
     {
-      "title": "Memory 5 \u2014 Alignment",
-      "text": "For a moment, fragments align. The pattern becomes readable and calm.",
-      "image": "./star.png"
+      "title": "Record 5",
+      "text": "Aquí va el text del record 5. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/05.jpg"
     },
     {
-      "title": "Memory 6 \u2014 Threshold",
-      "text": "Crossing this point unlocks the next phase. Keep advancing through the sequence.",
-      "image": "./star.png"
+      "title": "Record 6",
+      "text": "Aquí va el text del record 6. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/06.jpg"
     },
     {
-      "title": "Memory 7 \u2014 Bloom",
-      "text": "Details appear where there was noise. The story starts to feel intentional.",
-      "image": "./star.png"
+      "title": "Record 7",
+      "text": "Aquí va el text del record 7. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/07.jpg"
     },
     {
-      "title": "Memory 8 \u2014 Compression",
-      "text": "The distance narrows and the pace quickens. Focus on the active highlight.",
-      "image": "./star.png"
+      "title": "Record 8",
+      "text": "Aquí va el text del record 8. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/08.jpg"
     },
     {
-      "title": "Memory 9 \u2014 Signal",
-      "text": "A clear marker in the dark. This slide can later hold a custom image and copy.",
-      "image": "./star.png"
+      "title": "Record 9",
+      "text": "Aquí va el text del record 9. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/09.jpg"
     },
     {
-      "title": "Memory 10 \u2014 Resolve",
-      "text": "The constellation now has momentum. Every click connects the narrative.",
-      "image": "./star.png"
+      "title": "Record 10",
+      "text": "Aquí va el text del record 10. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/10.jpg"
     },
     {
-      "title": "Memory 11 \u2014 Nearing End",
-      "text": "The final nodes gather near each other, preparing the close of the arc.",
-      "image": "./star.png"
+      "title": "Record 11",
+      "text": "Aquí va el text del record 11. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/11.jpg"
     },
     {
-      "title": "t'estimo"
+      "title": "t'estimo",
+      "text": ""
     }
   ]
 }

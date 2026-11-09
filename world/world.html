@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ca">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>laurins</title>
   <link rel="icon" type="image/png" href="star.png">
   <link rel="stylesheet" href="styles/world.css">
   <style>
-    body { margin: 0; overflow: hidden; }
+    body { margin: 0; overflow: hidden; background: #000; touch-action: none; }
     #esc-hint {
       position: fixed;
       bottom: 20px;
@@ -34,11 +35,11 @@
 </head>
 <body>
   <script type="module" src="main.js"></script>
-  <div id="esc-hint">ESC to exit</div>
-  <div id="click-star-hint" aria-hidden="true">look at a star and click</div>
+  <div id="esc-hint">ESC per alliberar el ratolí</div>
+  <div id="click-star-hint" aria-hidden="true">mira l'estrella que brilla i fes clic</div>
   <div id="ending-overlay" aria-live="polite">
     <section class="ending-overlay__content">
-      <h1 id="ending-title" class="ending-overlay__title">The End</h1>
+      <h1 id="ending-title" class="ending-overlay__title"></h1>
       <p id="ending-text" class="ending-overlay__text"></p>
     </section>
   </div>

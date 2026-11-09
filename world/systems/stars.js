@@ -204,6 +204,7 @@ export class StoryStarSystem {
     this.stars = [];
     this.coneAngle = THREE.MathUtils.degToRad(18);
     this.lines = [];
+    this.enabled = true;
 
     this.hintDelay = 10.0;
     this.selectedIdleTime = 0;
@@ -289,6 +290,7 @@ export class StoryStarSystem {
   }
 
   _handleClick() {
+    if (!this.enabled) return;
     const star = this._getStarInCone();
 
     if (!star) return;
@@ -310,17 +312,26 @@ export class StoryStarSystem {
 
   _connectToPrevious(currentStar) {
     if (!currentStar || currentStar.index <= 0) return;
-
     const previousStar = this.stars[currentStar.index - 1];
     if (!previousStar || previousStar.state !== STORY_STATE.CLICKED) return;
-    if (this.lines[currentStar.index - 1]) return;
+    this.connectPair(currentStar.index - 1, currentStar.index);
+  }
 
-    const segment = new THREE.Vector3().subVectors(currentStar.position, previousStar.position);
-    const mid = previousStar.position.clone().add(currentStar.position).multiplyScalar(0.5);
+  // Dibuixa la línia entre dues estrelles (també serveix per tancar la figura).
+  connectPair(fromIndex, toIndex) {
+    const key = `${fromIndex}-${toIndex}`;
+    if (this.lines.some((entry) => entry && entry.key === key)) return;
+
+    const a = this.stars[fromIndex];
+    const b = this.stars[toIndex];
+    if (!a || !b) return;
+
+    const segment = new THREE.Vector3().subVectors(b.position, a.position);
+    const mid = a.position.clone().add(b.position).multiplyScalar(0.5);
     const up = mid.clone().normalize();
     const control = mid.clone().add(up.multiplyScalar(segment.length() * 0.13));
 
-    const curve = new THREE.QuadraticBezierCurve3(previousStar.position, control, currentStar.position);
+    const curve = new THREE.QuadraticBezierCurve3(a.position, control, b.position);
     const geo = new THREE.TubeGeometry(curve, 40, 1.0, 10, false);
 
     const opacity = 0.35 + Math.min(0.24, segment.length() / 760.0);
@@ -335,16 +346,33 @@ export class StoryStarSystem {
     });
 
     const line = new THREE.Mesh(geo, mat);
-    line.scale.setScalar(1);
     this.scene.add(line);
-    this.lines[currentStar.index - 1] = {
+    this.lines.push({
+      key,
       mesh: line,
       material: mat,
       phase: Math.random() * Math.PI * 2,
       baseOpacity: opacity * 0.78,
       midpoint: mid.clone(),
       targetPixels: 1.8
-    };
+    });
+  }
+
+  // Quan la constel·lació es completa, les línies i les estrelles brillen més.
+  celebrate() {
+    this.enabled = false;
+    this.showClickHint = false;
+    this.lines.forEach((entry) => {
+      entry.baseOpacity = Math.min(1, entry.baseOpacity * 1.7);
+      entry.targetPixels = 2.4;
+    });
+    this.stars.forEach((star) => {
+      star.targetSize = star.baseSize * 3.2;
+    });
+  }
+
+  isLastStar(index) {
+    return index === this.stars.length - 1;
   }
 
   update() {

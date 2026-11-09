@@ -1,3 +1,6 @@
+const IS_TOUCH = !!window.matchMedia?.("(pointer: coarse)").matches;
+const OUTSIDE_HINT = IS_TOUCH ? "toca fora per continuar" : "fes clic fora per continuar";
+
 export class StoryOverlay {
   constructor({ dataUrl = "./data/story-slides.json" } = {}) {
     this.dataUrl = dataUrl;
@@ -36,8 +39,8 @@ export class StoryOverlay {
 
   getEndingSlide() {
     return this.allSlides[this.allSlides.length - 1] || {
-      title: "The End",
-      text: "The constellation has completed.",
+      title: "Fi",
+      text: "",
       image: "./star.png"
     };
   }
@@ -118,7 +121,7 @@ export class StoryOverlay {
       if (!Array.isArray(data.slides)) return [];
 
       return data.slides.map((slide, i) => ({
-        title: slide.title || `Memory ${i + 1}`,
+        title: slide.title || `Record ${i + 1}`,
         text: slide.text || "",
         image: slide.image || "./star.png"
       }));
@@ -134,7 +137,7 @@ export class StoryOverlay {
 
     root.innerHTML = `
       <div class="story-overlay__backdrop"></div>
-      <section class="story-overlay__card" role="dialog" aria-modal="true" aria-label="Story memory">
+      <section class="story-overlay__card" role="dialog" aria-modal="true" aria-label="Record">
         <div class="story-overlay__media-wrap">
           <img class="story-overlay__media" src="" alt="" />
         </div>
@@ -144,13 +147,13 @@ export class StoryOverlay {
           <div class="story-overlay__footer">
             <span class="story-overlay__counter"></span>
             <div class="story-overlay__nav-group">
-              <button class="story-overlay__nav story-overlay__nav--prev" type="button" aria-label="Previous memory">Prev</button>
-              <button class="story-overlay__nav story-overlay__nav--next" type="button" aria-label="Next memory">Next</button>
+              <button class="story-overlay__nav story-overlay__nav--prev" type="button" aria-label="Record anterior">Anterior</button>
+              <button class="story-overlay__nav story-overlay__nav--next" type="button" aria-label="Record següent">Següent</button>
             </div>
           </div>
         </div>
       </section>
-      <div class="story-overlay__outside-hint">Click outside the box to continue</div>
+      <div class="story-overlay__outside-hint">${OUTSIDE_HINT}</div>
     `;
 
     document.body.appendChild(root);
@@ -168,6 +171,10 @@ export class StoryOverlay {
     this.prevBtn.addEventListener("click", () => this._goPrevious());
     this.nextBtn.addEventListener("click", () => this._goNext());
     this.image.addEventListener("load", () => this._syncCardOrientation());
+    // Si la foto encara no hi és, es mostra l'estrella.
+    this.image.addEventListener("error", () => {
+      if (!this.image.src.endsWith("/star.png")) this.image.src = "./star.png";
+    });
 
     root.addEventListener("click", (event) => {
       if (!this.isOpen()) return;
