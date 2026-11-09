@@ -3,7 +3,7 @@ import { createNoise2D, mulberry32, smoothstep } from "../core/noise.js";
 import { stylizedMaterial } from "../core/materials.js";
 import { groundHeight, groundSlope, edgeRadius, RIDGE_AZ, UPPER_AZ } from "./terrain.js";
 import { LAYOUT, inClearZone } from "../bivac/layout.js";
-import { generateSlabs } from "./slabs.js";
+import { generatePavement } from "./pavement.js";
 
 // ------------------------------------------------------------------
 // Terra del cim (sòl, sota les lloses i l'herba)
@@ -163,23 +163,109 @@ class RockBuilder {
   }
 }
 
-// Blocs de granit arrodonits que afloren entre la molsa i l'herba.
-function addBoulders(builder) {
-  generateSlabs().forEach((s) => {
-    builder.add({
-      x: s.x,
-      y: s.y,
-      z: s.z,
-      sx: s.length / 2,
-      sy: s.thick,
-      sz: s.width / 2,
-      euler: [s.dip, s.yaw, s.roll],
-      roughness: 0.22,
-      noiseScale: 1.1,
-      cuts: 2,
-      detail: s.length > 1.2 ? 3 : 2
-    });
+// ------------------------------------------------------------------
+// Paviment de blocs de granit
+// Cada bloc: base enterrada, parets, una vora arrodonida (bisell) i el cim
+// lleugerament bombat. Al pendent, els blocs no segueixen del tot el terreny
+// i fan graons, com a la foto.
+// ------------------------------------------------------------------
+function createPavement() {
+  const { blocks } = generatePavement();
+  const positions = [];
+  const colors = [];
+  const indices = [];
+  const noise = createNoise2D(55);
+
+  const push = (x, y, z) => {
+    positions.push(x, y, z);
+    return positions.length / 3 - 1;
+  };
+  const tri = (a, b, c, out) => {
+    // Gira el triangle si cal perquè la normal miri cap a fora.
+    const ax = positions[a * 3], ay = positions[a * 3 + 1], az = positions[a * 3 + 2];
+    const ux = positions[b * 3] - ax, uy = positions[b * 3 + 1] - ay, uz = positions[b * 3 + 2] - az;
+    const vx = positions[c * 3] - ax, vy = positions[c * 3 + 1] - ay, vz = positions[c * 3 + 2] - az;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    if (nx * out[0] + ny * out[1] + nz * out[2] < 0) indices.push(a, c, b);
+    else indices.push(a, b, c);
+  };
+
+  blocks.forEach((b) => {
+    if (b.pit) return;
+    const rng = mulberry32(b.seed);
+    const { cx, cz } = b;
+    const gap = 0.035 + rng() * 0.05;
+    const bevel = 0.035 + rng() * 0.04;
+
+    // Pla del cim del bloc: segueix el terreny a mitges (fa graons al pendent).
+    const e = 0.4;
+    const gx = (groundHeight(cx + e, cz) - groundHeight(cx - e, cz)) / (2 * e);
+    const gz = (groundHeight(cx, cz + e) - groundHeight(cx, cz - e)) / (2 * e);
+    const slope = Math.hypot(gx, gz);
+    const follow = slope > 0.35 ? 0.35 : 0.85;
+    const top = b.ground + 0.05 + rng() * 0.12 + slope * 0.25;
+    const tx = gx * follow + (rng() - 0.5) * 0.08;
+    const tz = gz * follow + (rng() - 0.5) * 0.08;
+    const planeY = (x, z) => top + (x - cx) * tx + (z - cz) * tz;
+
+    const shrink = (poly, d) =>
+      poly.map(([x, z]) => {
+        const dx = x - cx;
+        const dz = z - cz;
+        const len = Math.hypot(dx, dz) || 1;
+        const k = Math.max(0.05, 1 - d / len);
+        return [cx + dx * k, cz + dz * k];
+      });
+
+    const outer = shrink(b.poly, gap / 2);
+    const edge = shrink(outer, bevel);
+    const inner = shrink(outer, 0.45 * Math.min(...outer.map(([x, z]) => Math.hypot(x - cx, z - cz))));
+    const dome = 0.012 + rng() * 0.02;
+    const wob = (x, z, a) => (noise(x * 2.3, z * 2.3) / 0.7) * a;
+
+    const rings = [
+      outer.map(([x, z]) => push(x, planeY(x, z) - 0.9, z)),
+      outer.map(([x, z]) => push(x, planeY(x, z) - bevel * 0.9 + wob(x, z, 0.012), z)),
+      edge.map(([x, z]) => push(x, planeY(x, z) + wob(x, z, 0.01), z)),
+      inner.map(([x, z]) => push(x, planeY(x, z) + dome + wob(x, z, 0.012), z))
+    ];
+    const center = push(cx, planeY(cx, cz) + dome * 1.3, cz);
+
+    const n = outer.length;
+    for (let r = 0; r < rings.length - 1; r += 1) {
+      for (let i = 0; i < n; i += 1) {
+        const j = (i + 1) % n;
+        const a = rings[r][i];
+        const bb = rings[r][j];
+        const c = rings[r + 1][i];
+        const d = rings[r + 1][j];
+        const mx = (outer[i][0] + outer[j][0]) / 2 - cx;
+        const mz = (outer[i][1] + outer[j][1]) / 2 - cz;
+        const out = [mx, r === 2 ? 1.5 : r === 1 ? 0.6 : 0, mz];
+        tri(a, bb, c, out);
+        tri(bb, d, c, out);
+      }
+    }
+    for (let i = 0; i < n; i += 1) tri(center, rings[3][i], rings[3][(i + 1) % n], [0, 1, 0]);
+
+    // Color de cada bloc: granit amb variació.
+    const shade = 0.82 + rng() * 0.34;
+    const warm = (rng() - 0.3) * 0.04;
+    const col = [0.27 * shade + warm, 0.26 * shade + warm * 0.5, 0.25 * shade - warm * 0.2];
+    const count = n * 4 + 1;
+    for (let i = 0; i < count; i += 1) colors.push(col[0], col[1], col[2]);
   });
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute("aColor", new THREE.Float32BufferAttribute(colors, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, stylizedMaterial({ vertexColors: true, rock: "block" }));
+  mesh.frustumCulled = false;
+  return mesh;
 }
 
 // Pedretes soltes.
@@ -275,8 +361,8 @@ function addRidgeRocks(builder) {
       sy: s * (0.45 + rng() * 0.3),
       sz: s * (0.7 + rng() * 0.4),
       euler: [(rng() - 0.5) * 0.3, rng() * Math.PI, (rng() - 0.5) * 0.3],
-      roughness: 0.3,
-      cuts: 3,
+      roughness: 0.18,
+      cuts: 6,
       detail: 2
     });
   }
@@ -332,16 +418,12 @@ export function slabTopY() {
 export function createSummit() {
   const group = new THREE.Group();
   group.add(createGround());
+  group.add(createPavement());
 
-  // Granit rodat (suau).
-  const smooth = new RockBuilder(11, { flat: false });
-  addBoulders(smooth);
-  addOutcrops(smooth);
-  addRidgeRocks(smooth);
-  group.add(smooth.build());
-
-  // Pedres trencades (facetes): pedretes, fita i la llosa del fanal.
-  const sharp = new RockBuilder(12, { flat: true });
+  // Blocs grans i pedres (amb cares tallades, com granit diaclasat).
+  const sharp = new RockBuilder(12, { flat: false });
+  addOutcrops(sharp);
+  addRidgeRocks(sharp);
   addPebbles(sharp);
   addFita(sharp);
   addSlab(sharp);

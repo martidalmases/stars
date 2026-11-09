@@ -174,15 +174,15 @@
   </style>
 </head>
 <body>
-  <iframe id="scene-frame" src="world/world.html" title="scene preload"></iframe>
+  <iframe id="scene-frame" title="escena"></iframe>
 
   <main id="mini-game">
     <section class="paper">
-      <div id="loading-gate" aria-live="polite">
+      <div id="loading-gate" class="is-hidden" aria-live="polite">
         <p class="charging-title">charging memories</p>
         <p id="charging-points">.</p>
       </div>
-      <div id="question-wrap" class="question-wrap is-hidden">
+      <div id="question-wrap" class="question-wrap">
         <h1 class="question">qui té millor cul?</h1>
         <div class="button-area" id="button-area">
           <button id="yes-btn" class="btn" type="button">MARTÍ</button>
@@ -389,17 +389,22 @@
       }
     }
 
-    sceneFrame.addEventListener("load", () => {
-      worldLoaded = true;
-      revealQuestion();
+    // L'escena es comença a carregar quan la portada ja és a pantalla, i avisa
+    // amb un missatge quan està a punt.
+    let resolveWorld;
+    const worldReady = new Promise((resolve) => (resolveWorld = resolve));
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.sceneReady) {
+        worldLoaded = true;
+        resolveWorld();
+      }
+    });
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        sceneFrame.src = "world/world.html";
+      }, 400);
     });
 
-    if (sceneFrame.contentDocument?.readyState === "complete") {
-      worldLoaded = true;
-      revealQuestion();
-    }
-
-    startChargingPoints();
     initNoButtonMotion();
     requestAnimationFrame(animateNoButton);
 
@@ -424,15 +429,20 @@
         return;
       }
 
-      if (!worldLoaded) {
-        showNoHint();
-        return;
-      }
-
       transitioning = true;
       yesBtn.disabled = true;
       noBtn.disabled = true;
-      captureSceneCursor();
+
+      if (!worldLoaded) {
+        // Encara s'està carregant: "charging memories" fins que estigui a punt.
+        questionWrap.classList.add("is-hidden");
+        loadingGate.classList.remove("is-hidden");
+        startChargingPoints();
+        await worldReady;
+        stopChargingPoints();
+      } else {
+        captureSceneCursor();
+      }
 
       message.textContent = "";
 

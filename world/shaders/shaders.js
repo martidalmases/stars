@@ -125,7 +125,7 @@ vec3 graniteAt(vec3 base, vec2 p) {
   float grey = smoothstep(0.62, 0.66, fbm3(p * 1.7 - 5.0) + (vnoise(p * 14.0) - 0.5) * 0.25);
   c = mix(c, vec3(0.42, 0.44, 0.2), yellow * 0.75);
   c = mix(c, vec3(0.42, 0.42, 0.4), grey * 0.5);
-  return c * mix(0.35, 1.0, fissures(p));
+  return c * mix(0.6, 1.0, fissures(p));
 }
 
 vec3 rockAlbedo(vec3 base, vec3 p, vec3 n) {
@@ -236,6 +236,7 @@ export const GRASS = {
   vertex: /* glsl */ `
 attribute vec3 aColor;
 attribute float aHeight;
+attribute float aPhase;
 attribute vec3 aTint;
 uniform float uTime;
 uniform float uWind;
@@ -252,14 +253,16 @@ void main() {
   vec3 root = (m * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   float plantH = length(m[1].xyz);
 
-  float phase = uTime * 1.7 + root.x * 0.55 + root.z * 0.35;
+  // Cada tija té la seva fase: es mouen juntes amb la ràfega però no iguals.
+  float phase = uTime * (1.5 + aPhase * 0.6) + root.x * 0.55 + root.z * 0.35 + aPhase * 6.2831;
   float gust = 0.5 + 0.5 * sin(uTime * 0.41 + root.x * 0.09 - root.z * 0.06);
-  float sway = (sin(phase) * 0.55 + sin(phase * 2.31 + 1.7) * 0.2 + 0.35) * (0.45 + gust * 0.75) * uWind;
+  float sway = (sin(phase) * 0.55 + sin(phase * 2.31 + 1.7) * 0.22 + 0.4) * (0.4 + gust * 0.9) * uWind;
+  float flutter = sin(uTime * 7.0 + aPhase * 40.0) * 0.04 * gust;
   float k = aHeight * aHeight;
 
-  wp.x += sway * k * plantH * 0.32;
-  wp.z += sin(phase * 0.7 + 2.0) * k * plantH * 0.08 * uWind;
-  wp.y -= abs(sway) * k * plantH * 0.06;
+  wp.x += (sway + flutter) * k * plantH * 0.5;
+  wp.z += sin(phase * 0.7 + 2.0 + aPhase * 3.0) * k * plantH * 0.14 * uWind;
+  wp.y -= abs(sway) * k * plantH * 0.1;
 
   vWorld = wp.xyz;
   vNormalW = normalize(vec3(-sway * 0.3, 1.0, 0.25));

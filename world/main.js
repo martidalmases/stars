@@ -9,7 +9,6 @@ import { createSummit } from "./landscape/summit.js";
 import { createMountains } from "./landscape/mountains.js";
 import { createCloudSea, createHighClouds } from "./effects/clouds.js";
 import { createVegetation } from "./effects/grass.js";
-import { createMoss } from "./effects/moss.js";
 import { createShootingStars } from "./effects/shootingStar.js";
 import { createBivac } from "./bivac/bivac.js";
 
@@ -18,9 +17,13 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.6";
+const SCENE_VERSION = "0.7";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
+
+// Deixa respirar el navegador entre passos pesats: així la portada no es congela
+// mentre l'escena es construeix en segon pla.
+const breathe = () => new Promise((resolve) => setTimeout(resolve, 30));
 
 // ==============================
 // Escena bàsica
@@ -91,9 +94,12 @@ document.addEventListener("pointerlockchange", () => {
 // Paisatge
 // ==============================
 
+await breathe();
 const sky = createSkySphere(camera, renderer);
 scene.add(sky);
+await breathe();
 scene.add(createMountains());
+await breathe();
 scene.add(createCloudSea());
 
 const highClouds = createHighClouds();
@@ -111,10 +117,12 @@ const mistBanks = createHighClouds({
   speedDeg: [0.05, 0.12]
 });
 scene.add(mistBanks.group);
+await breathe();
 
 scene.add(createSummit());
-scene.add(createMoss());
+await breathe();
 scene.add(createVegetation());
+await breathe();
 
 const bivac = createBivac();
 scene.add(bivac.group);
@@ -228,4 +236,19 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// Compila els shaders abans del primer fotograma, sense bloquejar (si el navegador ho permet).
+if (renderer.compileAsync) {
+  try {
+    await renderer.compileAsync(scene, camera);
+  } catch (e) {
+    console.warn("compileAsync", e);
+  }
+}
+
 animate();
+
+// Avisa la portada que l'escena ja està a punt (després d'un parell de fotogrames,
+// quan els shaders ja s'han compilat).
+requestAnimationFrame(() =>
+  requestAnimationFrame(() => window.parent?.postMessage({ sceneReady: true }, "*"))
+);
