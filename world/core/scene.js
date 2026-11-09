@@ -114,7 +114,7 @@ function createBackgroundStarField(radius = 980, count = 1400) {
   const material = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    depthTest: false,
+    depthTest: true,
     blending: THREE.NormalBlending,
     uniforms: {
       glareBoost: { value: 1.0 }
@@ -323,191 +323,15 @@ export function createSkySphere(camera = null) {
   sky.frustumCulled = false;
   sky.renderOrder = -2;
 
-  const upperCloudTexture = createCloudTexture({
-    density: 20,
-    centerAlpha: 0.28,
-    edgeAlpha: 0.02
-  });
-  const lowerCloudTexture = createCloudTexture({
-    density: 38,
-    centerAlpha: 0.52,
-    edgeAlpha: 0.08
-  });
-
-  const upperCloudLayer = createUpperCloudLayer(upperCloudTexture);
-  const lowerCloudLayer = createLowerCloudFogLayer(lowerCloudTexture);
-
   const skyGroup = new THREE.Group();
   skyGroup.add(sky);
   skyGroup.add(createBackgroundStarField());
-  skyGroup.add(upperCloudLayer.group);
-  skyGroup.add(lowerCloudLayer.group);
 
-  skyGroup.userData.update = (dt) => {
-    upperCloudLayer.update(dt, camera);
-    lowerCloudLayer.update(dt, camera);
+  // Si cal, la càmera manté el cel centrat (ara és fixa a l'origen).
+  skyGroup.userData.update = () => {
+    if (camera) skyGroup.position.copy(camera.position);
   };
 
-  console.log("[Sky] Sky dome ready with layered gradient, procedural star field, and dual cloud layers.");
+  console.log("[Sky] Sky dome ready.");
   return skyGroup;
-}
-
-function createCloudTexture({
-  size = 256,
-  density = 20,
-  centerAlpha = 0.2,
-  edgeAlpha = 0.0
-} = {}) {
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-
-  ctx.clearRect(0, 0, size, size);
-
-  for (let i = 0; i < density; i += 1) {
-    const x = Math.random() * size;
-    const y = Math.random() * size;
-    const r = size * (0.12 + Math.random() * 0.34);
-    const gradient = ctx.createRadialGradient(x, y, r * 0.12, x, y, r);
-    gradient.addColorStop(0, `rgba(255,255,255,${centerAlpha})`);
-    gradient.addColorStop(0.55, `rgba(222,232,250,${centerAlpha * 0.45})`);
-    gradient.addColorStop(1, `rgba(165,182,220,${edgeAlpha})`);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.ClampToEdgeWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function createUpperCloudLayer(texture, count = 12) {
-  const group = new THREE.Group();
-  const clouds = [];
-
-  for (let i = 0; i < count; i += 1) {
-    const w = 280 + Math.random() * 320;
-    const h = 72 + Math.random() * 68;
-    const geo = new THREE.PlaneGeometry(w, h);
-    const mat = new THREE.MeshBasicMaterial({
-      map: null,
-      transparent: false,
-      opacity: 1.0,
-      depthWrite: false,
-      depthTest: false,
-      side: THREE.DoubleSide,
-      color: new THREE.Color(0xff0000),
-      wireframe: true
-    });
-
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.rotation.x = -Math.PI / 2.25;
-    mesh.rotation.z = Math.random() * Math.PI * 2;
-
-    const base = new THREE.Vector3(
-      (Math.random() * 2 - 1) * 700,
-      90 + Math.random() * 130,
-      -260 - Math.random() * 720
-    );
-
-    mesh.position.copy(base);
-    mesh.renderOrder = -1;
-
-    const drift = new THREE.Vector2((Math.random() * 2 - 1) * 2.2, 4.0 + Math.random() * 8.0);
-    const pulseOffset = Math.random() * Math.PI * 2;
-
-    clouds.push({ mesh, base, drift, pulseOffset });
-    group.add(mesh);
-  }
-
-  const update = (dt, camera) => {
-    if (camera) {
-      group.position.copy(camera.position);
-    }
-
-    for (const cloud of clouds) {
-      cloud.base.x += cloud.drift.x * dt;
-      cloud.base.z += cloud.drift.y * dt;
-
-      if (cloud.base.x > 760) cloud.base.x = -760;
-      if (cloud.base.x < -760) cloud.base.x = 760;
-      if (cloud.base.z > -140) cloud.base.z = -980;
-      if (cloud.base.z < -980) cloud.base.z = -140;
-
-      cloud.mesh.position.copy(cloud.base);
-      cloud.mesh.material.opacity = 1.0;
-    }
-  };
-
-  return { group, update };
-}
-
-function createLowerCloudFogLayer(texture, count = 70) {
-  const group = new THREE.Group();
-  const clouds = [];
-
-  for (let i = 0; i < count; i += 1) {
-    const w = 380 + Math.random() * 520;
-    const h = 200 + Math.random() * 260;
-    const geo = new THREE.PlaneGeometry(w, h);
-    const mat = new THREE.MeshBasicMaterial({
-      map: null,
-      transparent: false,
-      opacity: 1.0,
-      depthWrite: false,
-      depthTest: false,
-      side: THREE.DoubleSide,
-      color: new THREE.Color(0xff0000),
-      wireframe: true,
-      blending: THREE.NormalBlending
-    });
-
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.renderOrder = 0;
-
-    const base = new THREE.Vector3(
-      (Math.random() * 2 - 1) * 860,
-      -34 + Math.random() * 80,
-      -120 - Math.random() * 860
-    );
-
-    mesh.position.copy(base);
-
-    const drift = new THREE.Vector3(
-      (Math.random() * 2 - 1) * 1.9,
-      (Math.random() * 2 - 1) * 0.12,
-      7.0 + Math.random() * 14.0
-    );
-    const pulseOffset = Math.random() * Math.PI * 2;
-
-    clouds.push({ mesh, base, drift, pulseOffset });
-    group.add(mesh);
-  }
-
-  const update = (dt, camera) => {
-    if (camera) {
-      group.position.copy(camera.position);
-    }
-
-    for (const cloud of clouds) {
-      cloud.base.addScaledVector(cloud.drift, dt);
-
-      if (cloud.base.x > 920) cloud.base.x = -920;
-      if (cloud.base.x < -920) cloud.base.x = 920;
-      if (cloud.base.z > -60) cloud.base.z = -1020;
-      if (cloud.base.z < -1020) cloud.base.z = -60;
-
-      cloud.base.y = THREE.MathUtils.clamp(cloud.base.y + cloud.drift.y * dt, -96, 52);
-
-      cloud.mesh.position.copy(cloud.base);
-      if (camera) cloud.mesh.quaternion.copy(camera.quaternion);
-
-      cloud.mesh.material.opacity = 1.0;
-    }
-  };
-
-  return { group, update };
 }
