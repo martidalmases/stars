@@ -17,7 +17,7 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.10";
+const SCENE_VERSION = "0.12";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 
@@ -107,7 +107,7 @@ scene.add(highClouds.group);
 
 // Bancs de boira entre les serralades, just per sobre del mar de núvols.
 const mistBanks = createHighClouds({
-  count: 14,
+  count: 10,
   seed: 7,
   elevation: [-2.2, -0.3],
   distance: [230, 640],

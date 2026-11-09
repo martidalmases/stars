@@ -74,14 +74,25 @@ export class StoryOverlay {
   }
 
   _goPrevious() {
-    this.currentIndex = Math.max(0, this.currentIndex - 1);
-    this._renderCurrent();
+    this._turnTo(Math.max(0, this.currentIndex - 1));
   }
 
   _goNext() {
     const furthestUnlocked = Math.min(this.maxVisitedIndex, this.slides.length - 1);
-    this.currentIndex = Math.min(furthestUnlocked, this.currentIndex + 1);
-    this._renderCurrent();
+    this._turnTo(Math.min(furthestUnlocked, this.currentIndex + 1));
+  }
+
+  // Passa la pàgina: el contingut canvia a mig gir.
+  _turnTo(index) {
+    if (index === this.currentIndex) return;
+    this.card.classList.remove("is-turning");
+    void this.card.offsetWidth;
+    this.card.classList.add("is-turning");
+    window.setTimeout(() => {
+      this.currentIndex = index;
+      this._renderCurrent();
+    }, 250);
+    window.setTimeout(() => this.card.classList.remove("is-turning"), 540);
   }
 
   _renderCurrent() {
@@ -92,8 +103,10 @@ export class StoryOverlay {
     this.image.src = slide.image;
     this.image.alt = slide.title;
     this.title.textContent = slide.title;
+    this.caption.textContent = slide.title;
+    this.meta.textContent = [slide.place, slide.date].filter(Boolean).join("  ·  ");
     this.body.textContent = slide.text;
-    this.counter.textContent = `${this.currentIndex + 1} / ${this.maxVisitedIndex + 1}`;
+    this.counter.textContent = `pàg. ${this.currentIndex + 1}`;
 
     const furthestUnlocked = Math.min(this.maxVisitedIndex, this.slides.length - 1);
     this.prevBtn.disabled = this.currentIndex <= 0;
@@ -122,6 +135,8 @@ export class StoryOverlay {
 
       return data.slides.map((slide, i) => ({
         title: slide.title || `Record ${i + 1}`,
+        place: slide.place || "",
+        date: slide.date || "",
         text: slide.text || "",
         image: slide.image || "./star.png"
       }));
@@ -138,17 +153,19 @@ export class StoryOverlay {
     root.innerHTML = `
       <div class="story-overlay__backdrop"></div>
       <section class="story-overlay__card" role="dialog" aria-modal="true" aria-label="Record">
-        <div class="story-overlay__media-wrap">
+        <figure class="story-overlay__media-wrap">
           <img class="story-overlay__media" src="" alt="" />
-        </div>
+          <figcaption class="story-overlay__caption"></figcaption>
+        </figure>
         <div class="story-overlay__content">
+          <p class="story-overlay__meta"></p>
           <h2 class="story-overlay__title"></h2>
           <p class="story-overlay__text"></p>
           <div class="story-overlay__footer">
             <span class="story-overlay__counter"></span>
             <div class="story-overlay__nav-group">
-              <button class="story-overlay__nav story-overlay__nav--prev" type="button" aria-label="Record anterior">Anterior</button>
-              <button class="story-overlay__nav story-overlay__nav--next" type="button" aria-label="Record següent">Següent</button>
+              <button class="story-overlay__nav story-overlay__nav--prev" type="button" aria-label="Record anterior">&larr; enrere</button>
+              <button class="story-overlay__nav story-overlay__nav--next" type="button" aria-label="Record següent">endavant &rarr;</button>
             </div>
           </div>
         </div>
@@ -162,6 +179,8 @@ export class StoryOverlay {
     this.card = root.querySelector(".story-overlay__card");
     this.image = root.querySelector(".story-overlay__media");
     this.title = root.querySelector(".story-overlay__title");
+    this.meta = root.querySelector(".story-overlay__meta");
+    this.caption = root.querySelector(".story-overlay__caption");
     this.body = root.querySelector(".story-overlay__text");
     this.counter = root.querySelector(".story-overlay__counter");
     this.prevBtn = root.querySelector(".story-overlay__nav--prev");

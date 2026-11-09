@@ -8,7 +8,7 @@ import { mulberry32 } from "../core/noise.js";
 // Mar de núvols: un pla ondulat i animat que tapa les valls.
 // ------------------------------------------------------------------
 export function createCloudSea() {
-  const geo = new THREE.RingGeometry(0.5, 1000, 240, 120);
+  const geo = new THREE.RingGeometry(0.5, 1000, 180, 90);
   geo.rotateX(-Math.PI / 2);
 
   const mat = new THREE.ShaderMaterial({

@@ -2,56 +2,78 @@
   "slides": [
     {
       "title": "Record 1",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 1. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/01.jpg"
     },
     {
       "title": "Record 2",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 2. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/02.jpg"
     },
     {
       "title": "Record 3",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 3. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/03.jpg"
     },
     {
       "title": "Record 4",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 4. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/04.jpg"
     },
     {
       "title": "Record 5",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 5. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/05.jpg"
     },
     {
       "title": "Record 6",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 6. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/06.jpg"
     },
     {
       "title": "Record 7",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 7. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/07.jpg"
     },
     {
       "title": "Record 8",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 8. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/08.jpg"
     },
     {
       "title": "Record 9",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 9. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/09.jpg"
     },
     {
       "title": "Record 10",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 10. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/10.jpg"
     },
     {
       "title": "Record 11",
+      "place": "Lloc · altitud",
+      "date": "data",
       "text": "Aquí va el text del record 11. Canvia'l per la història que vulguis explicar.",
       "image": "./assets/11.jpg"
     },

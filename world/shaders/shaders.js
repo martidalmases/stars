@@ -110,8 +110,8 @@ float voronoiEdge(vec2 x) {
 
 // Granit: gra fi, taques de liquen (grogues i grises), esquerdes fines i fosques.
 float fissures(vec2 p) {
-  float e = voronoiEdge(p * 0.9 + fbm3(p * 0.7) * 1.2);
-  float mask = smoothstep(0.45, 0.65, fbm3(p * 0.45 + 3.0));
+  float e = voronoiEdge(p * 0.9 + vnoise(p * 0.7) * 1.2);
+  float mask = smoothstep(0.45, 0.65, vnoise(p * 0.45 + 3.0));
   return 1.0 - (1.0 - smoothstep(0.0, 0.025, e)) * mask;
 }
 
@@ -122,7 +122,7 @@ vec3 graniteAt(vec3 base, vec2 p) {
   // Liquen: taques irregulars amb vores retallades.
   float lichenField = fbm3(p * 3.6 + 11.0) + (vnoise(p * 22.0) - 0.5) * 0.3;
   float yellow = smoothstep(0.64, 0.67, lichenField);
-  float grey = smoothstep(0.62, 0.66, fbm3(p * 1.7 - 5.0) + (vnoise(p * 14.0) - 0.5) * 0.25);
+  float grey = smoothstep(0.6, 0.64, vnoise(p * 1.7 - 5.0) + (grain - 0.5) * 0.25);
   c = mix(c, vec3(0.38, 0.4, 0.22), yellow * 0.45);
   c = mix(c, vec3(0.38, 0.38, 0.36), grey * 0.3);
   return c * mix(0.6, 1.0, fissures(p));
@@ -138,14 +138,11 @@ vec3 rockAlbedo(vec3 base, vec3 p, vec3 n) {
   soil = mix(soil, base * vec3(0.85, 1.2, 0.7), moss * 0.6);
   return mix(soil, vec3(0.2, 0.2, 0.21), pebbles * 0.5);
 #else
-  vec3 w = pow(abs(n), vec3(4.0));
-  w /= (w.x + w.y + w.z);
-  // Només es calculen les projeccions que realment es veuen (estalvia feina).
-  vec3 c = vec3(0.0);
-  if (w.x > 0.03) c += graniteAt(base, p.yz) * w.x;
-  if (w.y > 0.03) c += graniteAt(base, p.xz) * w.y;
-  if (w.z > 0.03) c += graniteAt(base, p.xy) * w.z;
-  return c / max(w.x * step(0.03, w.x) + w.y * step(0.03, w.y) + w.z * step(0.03, w.z), 0.0001);
+  // Una sola projecció (la de la cara dominant): molt més barat que barrejar-ne tres.
+  vec3 an = abs(n);
+  if (an.y >= an.x && an.y >= an.z) return graniteAt(base, p.xz);
+  if (an.x >= an.z) return graniteAt(base, p.yz);
+  return graniteAt(base, p.xy);
 #endif
 }
 `;
