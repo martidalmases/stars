@@ -1,7 +1,7 @@
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 import { mulberry32 } from "../core/noise.js";
 import { grassMaterial } from "../core/materials.js";
-import { groundHeight } from "../landscape/terrain.js";
+import { groundHeight, SOIL_DEPTH } from "../landscape/terrain.js";
 import { generatePavement } from "../landscape/pavement.js";
 
 // Plantes alpines que creixen a les esquerdes entre blocs: tiges llargues i
@@ -204,9 +204,10 @@ export function createVegetation() {
     const tints = [];
     const mesh = new THREE.InstancedMesh(geo, grassMaterial(), items.length);
     items.forEach(({ x, z, size }, i) => {
-      const h = (0.22 + Math.pow(rng(), 1.3) * 0.32) * size;
+      const h = (0.3 + Math.pow(rng(), 1.3) * 0.34) * size;
       q.setFromEuler(new THREE.Euler((rng() - 0.5) * 0.25, rng() * Math.PI * 2, (rng() - 0.5) * 0.25));
-      m.compose(new THREE.Vector3(x, groundHeight(x, z) - 0.02, z), q, new THREE.Vector3(h, h, h));
+      // Neix al fons de l'esquerda, entre els blocs.
+      m.compose(new THREE.Vector3(x, groundHeight(x, z) - SOIL_DEPTH + 0.01, z), q, new THREE.Vector3(h, h, h));
       mesh.setMatrixAt(i, m);
       const v = 0.85 + rng() * 0.3;
       tints.push(v, v, v * (0.9 + rng() * 0.2));

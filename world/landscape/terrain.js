@@ -9,7 +9,13 @@ import { createNoise2D, fbm, smoothstep } from "../core/noise.js";
 
 // Estàs estirat amb el cap aixecat: els ulls (la càmera) són a 0, el terra a -0.6.
 export const GROUND_Y = -0.6;
-export const CLOUD_Y = -40;
+// Mar de núvols. Les muntanyes tenen la seva pròpia referència (MOUNTAIN_REF_Y)
+// perquè pujar o baixar els núvols no les canviï.
+export const CLOUD_Y = -24;
+export const MOUNTAIN_REF_Y = -40;
+// El sòl entre blocs és més avall que el cim dels blocs: així les esquerdes són fondes.
+export const SOIL_DEPTH = 0.16;
+export const PAVEMENT_RADIUS = 22;
 
 const nBumps = createNoise2D(7);
 const nDetail = createNoise2D(19);

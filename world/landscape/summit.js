@@ -1,7 +1,7 @@
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 import { createNoise2D, mulberry32, smoothstep } from "../core/noise.js";
 import { stylizedMaterial } from "../core/materials.js";
-import { groundHeight, groundSlope, edgeRadius, RIDGE_AZ, UPPER_AZ } from "./terrain.js";
+import { groundHeight, groundSlope, edgeRadius, RIDGE_AZ, UPPER_AZ, SOIL_DEPTH, PAVEMENT_RADIUS } from "./terrain.js";
 import { LAYOUT, inClearZone } from "../bivac/layout.js";
 import { generatePavement } from "./pavement.js";
 
@@ -27,7 +27,9 @@ function createGround() {
       const th = (i / nT) * Math.PI * 2;
       const x = Math.sin(th) * r;
       const z = -Math.cos(th) * r;
-      positions.push(x, groundHeight(x, z), z);
+      // Dins la zona de blocs, el sòl queda enfonsat (fons de les esquerdes).
+      const sink = SOIL_DEPTH * (1 - smoothstep(PAVEMENT_RADIUS - 4, PAVEMENT_RADIUS + 2, r));
+      positions.push(x, groundHeight(x, z) - sink, z);
 
       // Als pendents forts, tartera (pedra solta) en lloc de sòl.
       const slope = groundSlope(x, z);
@@ -196,8 +198,8 @@ function createPavement() {
     if (b.pit) return;
     const rng = mulberry32(b.seed);
     const { cx, cz } = b;
-    const gap = 0.035 + rng() * 0.05;
-    const bevel = 0.035 + rng() * 0.04;
+    const gap = 0.05 + rng() * 0.07;
+    const bevel = 0.05 + rng() * 0.05;
 
     // Pla del cim del bloc: segueix el terreny a mitges (fa graons al pendent).
     const e = 0.4;
@@ -205,14 +207,15 @@ function createPavement() {
     const gz = (groundHeight(cx, cz + e) - groundHeight(cx, cz - e)) / (2 * e);
     const slope = Math.hypot(gx, gz);
     const follow = slope > 0.35 ? 0.35 : 0.85;
-    let top = b.ground + 0.05 + rng() * 0.12 + slope * 0.25;
-    let tx = gx * follow + (rng() - 0.5) * 0.08;
-    let tz = gz * follow + (rng() - 0.5) * 0.08;
+    let top = b.ground + 0.01 + Math.pow(rng(), 1.5) * 0.2 + slope * 0.25;
+    let tx = gx * follow + (rng() - 0.5) * 0.16;
+    let tz = gz * follow + (rng() - 0.5) * 0.16;
     if (b.flush) {
-      // Sota el bivac: enrasats i plans, per sota de les esterilles.
-      top = b.ground - 0.025 - rng() * 0.02;
-      tx = 0;
-      tz = 0;
+      // Sota el bivac: plans i just per sota de les esterilles, però per sobre
+      // del sòl, de manera que les esquerdes es veuen al voltant.
+      top = b.ground - 0.004 - rng() * 0.012;
+      tx = (rng() - 0.5) * 0.01;
+      tz = (rng() - 0.5) * 0.01;
     }
     const planeY = (x, z) => top + (x - cx) * tx + (z - cz) * tz;
 

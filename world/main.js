@@ -17,7 +17,7 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.8";
+const SCENE_VERSION = "0.9";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 
@@ -109,7 +109,7 @@ scene.add(highClouds.group);
 const mistBanks = createHighClouds({
   count: 14,
   seed: 7,
-  elevation: [-3.2, -0.6],
+  elevation: [-2.2, -0.3],
   distance: [230, 640],
   widthRange: [220, 420],
   color: [0.052, 0.063, 0.094],

@@ -2,7 +2,7 @@ import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 import { createNoise2D, fbm, ridged, smoothstep } from "../core/noise.js";
 import { shared } from "../core/environment.js";
 import { MOUNTAIN } from "../shaders/shaders.js";
-import { CLOUD_Y } from "./terrain.js";
+import { MOUNTAIN_REF_Y } from "./terrain.js";
 
 // Capes de serralades, de més a prop a més lluny. Cada capa és una mica més alta i
 // més esvaïda per la boira: això dona la sensació d'escala.
@@ -72,7 +72,7 @@ function buildLayer(L) {
 
   const positions = new Float32Array(count * 3);
   const heights = new Float32Array(count);
-  const base = CLOUD_Y - 15;
+  const base = MOUNTAIN_REF_Y - 15;
 
   for (let j = 0; j <= nR; j += 1) {
     const r = L.r0 + ((L.r1 - L.r0) * j) / nR;
