@@ -108,14 +108,24 @@ float voronoiEdge(vec2 x) {
   return sqrt(d2) - sqrt(d1);
 }
 
-// Roca: taques suaus, estrats (bandes segons l'alçada), venes fines i liquen.
-float rockPattern(vec2 p) {
-  float mottle = fbm3(p * 0.9);
-  float grain = vnoise(p * 14.0);
-  float vein = smoothstep(0.0, 0.035, voronoiEdge(p * 2.2 + mottle * 1.5));
-  float lichen = smoothstep(0.7, 0.82, fbm3(p * 3.1 + 11.0));
-  float v = (0.78 + 0.42 * mottle) * (0.9 + 0.2 * grain) * mix(0.72, 1.0, vein);
-  return v * mix(1.0, 1.25, lichen);
+// Granit: gra fi, taques de liquen (grogues i grises), esquerdes fines i fosques.
+float fissures(vec2 p) {
+  float e = voronoiEdge(p * 0.9 + fbm3(p * 0.7) * 1.2);
+  float mask = smoothstep(0.45, 0.65, fbm3(p * 0.45 + 3.0));
+  return 1.0 - (1.0 - smoothstep(0.0, 0.025, e)) * mask;
+}
+
+vec3 graniteAt(vec3 base, vec2 p) {
+  float mottle = fbm3(p * 1.3);
+  float grain = vnoise(p * 38.0) * 0.6 + vnoise(p * 90.0) * 0.4;
+  vec3 c = base * (0.82 + 0.3 * mottle) * (0.86 + 0.28 * grain);
+  // Liquen: taques irregulars amb vores retallades.
+  float lichenField = fbm3(p * 2.2 + 11.0) + (vnoise(p * 16.0) - 0.5) * 0.25;
+  float yellow = smoothstep(0.6, 0.64, lichenField);
+  float grey = smoothstep(0.62, 0.66, fbm3(p * 1.7 - 5.0) + (vnoise(p * 14.0) - 0.5) * 0.25);
+  c = mix(c, vec3(0.42, 0.44, 0.2), yellow * 0.75);
+  c = mix(c, vec3(0.42, 0.42, 0.4), grey * 0.5);
+  return c * mix(0.35, 1.0, fissures(p));
 }
 
 vec3 rockAlbedo(vec3 base, vec3 p, vec3 n) {
@@ -125,17 +135,17 @@ vec3 rockAlbedo(vec3 base, vec3 p, vec3 n) {
   float pebbles = smoothstep(0.72, 0.8, g);
   float moss = smoothstep(0.45, 0.7, fbm3(p.xz * 0.9 + 4.0));
   vec3 soil = base * (0.8 + 0.35 * fbm3(p.xz * 2.5));
-  soil = mix(soil, base * vec3(0.85, 1.15, 0.75), moss * 0.6);
+  soil = mix(soil, base * vec3(0.85, 1.2, 0.7), moss * 0.6);
   return mix(soil, vec3(0.2, 0.2, 0.21), pebbles * 0.5);
 #else
   vec3 w = pow(abs(n), vec3(4.0));
   w /= (w.x + w.y + w.z);
-  float v = rockPattern(p.yz) * w.x + rockPattern(p.xz) * w.y + rockPattern(p.xy) * w.z;
-  // Estrats: bandes horitzontals suaus, una mica ondulades.
-  float strata = 0.5 + 0.5 * sin(p.y * 22.0 + fbm3(p.xz * 1.5) * 4.0);
-  v *= 0.9 + 0.12 * strata * (1.0 - w.y);
-  float lichenTint = smoothstep(0.75, 0.9, fbm3(p.xz * 2.7 + p.y * 1.3 + 7.0));
-  return mix(base * v, base * v * vec3(1.15, 1.18, 0.9), lichenTint * w.y);
+  // Només es calculen les projeccions que realment es veuen (estalvia feina).
+  vec3 c = vec3(0.0);
+  if (w.x > 0.03) c += graniteAt(base, p.yz) * w.x;
+  if (w.y > 0.03) c += graniteAt(base, p.xz) * w.y;
+  if (w.z > 0.03) c += graniteAt(base, p.xy) * w.z;
+  return c / max(w.x * step(0.03, w.x) + w.y * step(0.03, w.y) + w.z * step(0.03, w.z), 0.0001);
 #endif
 }
 `;
@@ -147,6 +157,9 @@ export const STYLIZED = {
   vertex: /* glsl */ `
 #ifdef USE_ACOLOR
 attribute vec3 aColor;
+#endif
+#ifdef USE_TINT
+attribute vec3 aTint;
 #endif
 varying vec3 vWorld;
 varying vec3 vNormalW;
@@ -165,6 +178,9 @@ void main() {
 #else
   vColor = vec3(1.0);
 #endif
+#ifdef USE_TINT
+  vColor *= aTint;
+#endif
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `,
@@ -174,8 +190,10 @@ varying vec3 vWorld;
 varying vec3 vNormalW;
 varying vec3 vColor;
 ${LIGHTING}
-#if defined(ROCK) || defined(ROCK_GROUND)
+#if defined(ROCK) || defined(ROCK_GROUND) || defined(MOSS)
 ${NOISE}
+#endif
+#if defined(ROCK) || defined(ROCK_GROUND)
 ${ROCK}
 #endif
 
@@ -190,8 +208,15 @@ void main() {
 #if defined(ROCK) || defined(ROCK_GROUND)
   albedo = rockAlbedo(albedo, vWorld, n);
 #endif
+#ifdef MOSS
+  // Coixins de molsa i bruc: milers de fulletes (punts de dos tons).
+  float dots = vnoise(vWorld.xz * 70.0 + vWorld.y * 45.0);
+  float dots2 = vnoise(vWorld.xz * 31.0 - vWorld.y * 20.0 + 7.0);
+  albedo *= 0.55 + 0.75 * smoothstep(0.35, 0.75, dots);
+  albedo = mix(albedo, albedo * vec3(1.4, 1.05, 0.6), smoothstep(0.6, 0.8, dots2) * 0.6);
+#endif
   vec3 col = shadeStylized(albedo, n, vWorld);
-#ifdef FABRIC
+#if defined(FABRIC) || defined(MOSS)
   // Lluentor suau de la tela de niló a les vores.
   float ndv = max(dot(n, normalize(cameraPosition - vWorld)), 0.0);
   vec3 toLampF = uLanternPos - vWorld;

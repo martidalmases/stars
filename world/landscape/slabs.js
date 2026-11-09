@@ -1,5 +1,5 @@
-// Lloses de roca que afloren al cim, com estrats inclinats que surten de terra.
-// Entre llosa i llosa queda terra i és on creix l'herba.
+// Blocs de granit arrodonits que afloren al cim (com a les fotos de referència).
+// Entre bloc i bloc queda terra, molsa i herba.
 // Funcions pures (sense three.js): també les fa servir la vegetació.
 
 import { mulberry32, createNoise2D } from "../core/noise.js";
@@ -8,7 +8,7 @@ import { inClearZone } from "../bivac/layout.js";
 
 // Direcció dels estrats (tots els afloraments van més o menys alineats).
 const STRIKE = 0.5;
-const DIP = 0.32;
+const DIP = 0.14;
 
 let cached = null;
 
@@ -19,7 +19,7 @@ export function generateSlabs() {
   const slabs = [];
   const upperDir = [Math.sin((UPPER_AZ * Math.PI) / 180), -Math.cos((UPPER_AZ * Math.PI) / 180)];
 
-  for (let attempt = 0; attempt < 5000 && slabs.length < 260; attempt += 1) {
+  for (let attempt = 0; attempt < 5000 && slabs.length < 230; attempt += 1) {
     const th = (rng() * 2 - 1) * Math.PI;
     let r = 1.2 + Math.pow(rng(), 0.8) * (edgeRadius(th) + 1.5);
     // També n'hi ha a la pujada de l'avantcim.
@@ -33,10 +33,10 @@ export function generateSlabs() {
 
     const along = x * upperDir[0] + z * upperDir[1];
     const big = along > 4 ? 1.6 : 1;
-    const length = (0.45 + Math.pow(rng(), 1.6) * 1.3) * big * (0.8 + Math.min(r, 10) * 0.05);
-    const width = length * (0.45 + rng() * 0.35);
-    const thick = length * (0.18 + rng() * 0.16);
-    const yaw = STRIKE + (rng() - 0.5) * 0.7;
+    const length = (0.55 + Math.pow(rng(), 1.5) * 1.6) * big * (0.8 + Math.min(r, 10) * 0.05);
+    const width = length * (0.55 + rng() * 0.35);
+    const thick = length * (0.3 + rng() * 0.22);
+    const yaw = STRIKE + (rng() - 0.5) * 1.6;
 
     if (inClearZone(x, z, length * 0.55)) continue;
     const clash = slabs.some((s) => Math.hypot(s.x - x, s.z - z) < (s.length + length) * 0.38);
@@ -48,7 +48,7 @@ export function generateSlabs() {
     slabs.push({
       x,
       z,
-      y: ground - thick * 0.28,
+      y: ground - thick * 0.45,
       length,
       width,
       thick,

@@ -67,24 +67,44 @@ function createGround() {
 // Roques: totes en una sola malla
 // ------------------------------------------------------------------
 class RockBuilder {
-  constructor(seed) {
+  // flat: facetes marcades (pedres trencades); si no, superfície suau (granit rodat).
+  constructor(seed, { flat = true } = {}) {
     this.rng = mulberry32(seed);
     this.noise = createNoise2D(seed + 5);
+    this.flat = flat;
     this.positions = [];
+    this.normals = [];
     this.colors = [];
+    this.indices = [];
   }
 
   // euler: rotació explícita [x, y, z] (si no, es fa servir tilt/rotY).
-  add({ x, y, z, sx, sy, sz, rotY = 0, tilt = 0, euler = null, color = null, roughness = 0.32, flatTop = false, cuts = 3, detail = 1 }) {
+  add({ x, y, z, sx, sy, sz, rotY = 0, tilt = 0, euler = null, color = null, roughness = 0.32, flatTop = false, cuts = 3, detail = 1, noiseScale = 1.4 }) {
     const base = new THREE.IcosahedronGeometry(1, detail);
+    const src = base.attributes.position;
+
+    // Uneix els vèrtexs repetits per poder fer normals suaus.
+    const map = new Map();
+    const unique = [];
+    const index = [];
+    for (let i = 0; i < src.count; i += 1) {
+      const key = `${src.getX(i).toFixed(4)},${src.getY(i).toFixed(4)},${src.getZ(i).toFixed(4)}`;
+      let id = map.get(key);
+      if (id === undefined) {
+        id = unique.length;
+        map.set(key, id);
+        unique.push(new THREE.Vector3(src.getX(i), src.getY(i), src.getZ(i)));
+      }
+      index.push(id);
+    }
+    base.dispose();
+
     const planes = [];
     for (let c = 0; c < cuts; c += 1) {
       const n = new THREE.Vector3(this.rng() * 2 - 1, this.rng() * 1.2 - 0.2, this.rng() * 2 - 1).normalize();
       planes.push({ n, d: 0.55 + this.rng() * 0.3 });
     }
-    const pos = base.attributes.position;
     const seed = this.rng() * 100;
-    const v = new THREE.Vector3();
     const rot = euler ? new THREE.Euler(euler[0], euler[1], euler[2], "YXZ") : new THREE.Euler(tilt, rotY, tilt * 0.6);
     const m = new THREE.Matrix4().compose(
       new THREE.Vector3(x, y, z),
@@ -93,43 +113,58 @@ class RockBuilder {
     );
 
     const shade = 0.85 + this.rng() * 0.3;
-    const warm = (this.rng() - 0.4) * 0.03;
-    const col = color || [0.25 * shade + warm, 0.25 * shade + warm * 0.4, 0.265 * shade - warm * 0.3];
+    const warm = (this.rng() - 0.3) * 0.035;
+    const col = color || [0.27 * shade + warm, 0.26 * shade + warm * 0.5, 0.255 * shade - warm * 0.2];
 
-    for (let i = 0; i < pos.count; i += 1) {
-      v.fromBufferAttribute(pos, i);
+    const pos = [];
+    unique.forEach((v0) => {
+      const v = v0.clone();
       const n =
-        this.noise(v.x * 1.4 + seed, v.y * 1.4) / 0.7 +
-        (this.noise(v.z * 1.4, v.x * 1.4 + seed) / 0.7) * 0.6;
+        this.noise(v.x * noiseScale + seed, v.y * noiseScale) / 0.7 +
+        (this.noise(v.z * noiseScale, v.x * noiseScale + seed) / 0.7) * 0.6;
       let d = 1 + roughness * n * 0.6;
       if (v.y < -0.35) d *= 0.85;
       v.multiplyScalar(d);
-      if (v.y < -0.45) v.y = -0.45; // base plana: reposa a terra
+      if (v.y < -0.45) v.y = -0.45;
       if (flatTop && v.y > 0.55) v.y = 0.55;
       planes.forEach(({ n: pn, d: pd }) => {
         const k = v.dot(pn);
         if (k > pd) v.addScaledVector(pn, pd - k);
       });
       v.applyMatrix4(m);
-      this.positions.push(v.x, v.y, v.z);
-      this.colors.push(col[0], col[1], col[2]);
+      pos.push(v.x, v.y, v.z);
+    });
+
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(index);
+    g.computeVertexNormals();
+    const nrm = g.attributes.normal.array;
+
+    const offset = this.positions.length / 3;
+    for (let i = 0; i < pos.length; i += 1) {
+      this.positions.push(pos[i]);
+      this.normals.push(nrm[i]);
     }
-    base.dispose();
+    for (let i = 0; i < unique.length; i += 1) this.colors.push(col[0], col[1], col[2]);
+    index.forEach((id) => this.indices.push(id + offset));
+    g.dispose();
   }
 
   build() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
+    geo.setAttribute("normal", new THREE.Float32BufferAttribute(this.normals, 3));
     geo.setAttribute("aColor", new THREE.Float32BufferAttribute(this.colors, 3));
-    geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, stylizedMaterial({ flat: true, vertexColors: true, rock: "block" }));
+    geo.setIndex(this.indices);
+    const mesh = new THREE.Mesh(geo, stylizedMaterial({ flat: this.flat, vertexColors: true, rock: "block" }));
     mesh.frustumCulled = false;
     return mesh;
   }
 }
 
-// Lloses inclinades (estrats) que surten de terra.
-function addSlabs(builder) {
+// Blocs de granit arrodonits que afloren entre la molsa i l'herba.
+function addBoulders(builder) {
   generateSlabs().forEach((s) => {
     builder.add({
       x: s.x,
@@ -139,9 +174,10 @@ function addSlabs(builder) {
       sy: s.thick,
       sz: s.width / 2,
       euler: [s.dip, s.yaw, s.roll],
-      roughness: 0.2,
-      flatTop: true,
-      cuts: 3
+      roughness: 0.22,
+      noiseScale: 1.1,
+      cuts: 2,
+      detail: s.length > 1.2 ? 3 : 2
     });
   });
 }
@@ -221,36 +257,28 @@ function addOutcrops(builder) {
   }
 }
 
-// Gendarmes (torres de roca) al llarg de la carena: fan que es llegeixi la forma.
-function addRidgeTowers(builder) {
+// Blocs dispersos al llarg de la carena (no gaire grans): en marquen el fil.
+function addRidgeRocks(builder) {
   const rng = mulberry32(91);
   const dir = [Math.sin((RIDGE_AZ * Math.PI) / 180), -Math.cos((RIDGE_AZ * Math.PI) / 180)];
-  let a = 9;
-  while (a < 260) {
-    const x = dir[0] * a;
-    const z = dir[1] * a;
-    // Busca el punt més alt de la carena a prop.
-    let best = { x, z, y: groundHeight(x, z) };
-    for (let k = -6; k <= 6; k += 1) {
-      const px = x + dir[1] * k * 1.2;
-      const pz = z - dir[0] * k * 1.2;
-      const py = groundHeight(px, pz);
-      if (py > best.y) best = { x: px, z: pz, y: py };
-    }
-    const scale = 1 + a * 0.02;
-    const h = (1.5 + rng() * 3.5) * scale;
+  for (let i = 0; i < 70; i += 1) {
+    const a = 6 + Math.pow(rng(), 1.3) * 120;
+    const c = (rng() - 0.5) * (3 + a * 0.08);
+    const x = dir[0] * a + dir[1] * c;
+    const z = dir[1] * a - dir[0] * c;
+    const s = (0.4 + Math.pow(rng(), 2) * 1.3) * (1 + a * 0.012);
     builder.add({
-      x: best.x,
-      y: best.y + h * 0.3,
-      z: best.z,
-      sx: h * (0.35 + rng() * 0.25),
-      sy: h,
-      sz: h * (0.3 + rng() * 0.2),
+      x,
+      y: groundHeight(x, z) - s * 0.15,
+      z,
+      sx: s * (0.8 + rng() * 0.5),
+      sy: s * (0.45 + rng() * 0.3),
+      sz: s * (0.7 + rng() * 0.4),
       euler: [(rng() - 0.5) * 0.3, rng() * Math.PI, (rng() - 0.5) * 0.3],
-      roughness: 0.4,
-      cuts: 4
+      roughness: 0.3,
+      cuts: 3,
+      detail: 2
     });
-    a += (6 + rng() * 10) * scale;
   }
 }
 
@@ -305,14 +333,19 @@ export function createSummit() {
   const group = new THREE.Group();
   group.add(createGround());
 
-  const rocks = new RockBuilder(11);
-  addSlabs(rocks);
-  addPebbles(rocks);
-  addOutcrops(rocks);
-  addRidgeTowers(rocks);
-  addFita(rocks);
-  addSlab(rocks);
-  group.add(rocks.build());
+  // Granit rodat (suau).
+  const smooth = new RockBuilder(11, { flat: false });
+  addBoulders(smooth);
+  addOutcrops(smooth);
+  addRidgeRocks(smooth);
+  group.add(smooth.build());
+
+  // Pedres trencades (facetes): pedretes, fita i la llosa del fanal.
+  const sharp = new RockBuilder(12, { flat: true });
+  addPebbles(sharp);
+  addFita(sharp);
+  addSlab(sharp);
+  group.add(sharp.build());
 
   return group;
 }

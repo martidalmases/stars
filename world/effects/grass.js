@@ -165,7 +165,7 @@ function meadowSpots({ seed, count, maxExtra = 1.0 }) {
 export function createVegetation() {
   const group = new THREE.Group();
   const rng = mulberry32(5);
-  const grassSpots = meadowSpots({ seed: 5, count: 2600 });
+  const grassSpots = meadowSpots({ seed: 5, count: 1600 });
   const flowerSpots = meadowSpots({ seed: 9, count: 230 });
 
   // Herba alpina: fulles fines i llargues.
@@ -174,8 +174,8 @@ export function createVegetation() {
       geometry: tuftGeometry(rng, { blades: 14, width: 0.3, spread: 0.07, lean: 1.2, root: [0.035, 0.04, 0.025], tip: [0.2, 0.19, 0.11] }),
       spots: grassSpots,
       seed: 61,
-      minScale: 0.16,
-      maxScale: 0.42,
+      minScale: 0.12,
+      maxScale: 0.3,
       tints: [[1, 1, 1], [1.3, 1.05, 0.7], [0.85, 0.95, 1.0]]
     })
   );

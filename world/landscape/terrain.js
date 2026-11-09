@@ -65,7 +65,11 @@ export function groundHeight(x, z) {
   let y = GROUND_Y;
   const bumps = fbm(nBumps, x * 0.16, z * 0.16, 3) * 0.35 + fbm(nDetail, x * 0.62, z * 0.62, 2) * 0.1;
   const ledge = Math.floor((fbm(nLedge, x * 0.22, z * 0.22, 2) / 0.7 + 1) * 2.2) / 2.2;
-  y += w * (bumps + ledge * 0.1);
+  // Al començament de la carena no hi ha bonys: el llavi ha de quedar baix.
+  const ra = x * RIDGE_DIR[0] + z * RIDGE_DIR[1];
+  const rc = Math.abs(x * RIDGE_DIR[1] - z * RIDGE_DIR[0]);
+  const lip = smoothstep(0.5, 2.0, ra) * (1 - smoothstep(2.0, 6.0, rc));
+  y += w * (bumps + ledge * 0.1) * (1 - lip);
   const dome = Math.max(0, r - 2.5);
   y -= dome * dome * 0.03;
 
@@ -78,16 +82,22 @@ export function groundHeight(x, z) {
   // Esperó: un graó sota el replà i després una carena llarga i suau que s'allunya
   // i s'enfonsa dins la boira. Té perfil còncau perquè es vegi des de dalt.
   const a1 = x * RIDGE_DIR[0] + z * RIDGE_DIR[1];
-  if (a1 > 2.5) {
+  if (a1 > 1.0) {
     const wobble = fbm(nRidge, a1 * 0.03, 3.3, 3) * 10 * smoothstep(10, 60, a1);
     const c1 = Math.abs(x * RIDGE_DIR[1] - z * RIDGE_DIR[0] + wobble);
-    const t = a1 - 3.5;
+    // Comença a la vora del campament amb un perfil còncau (primer baixa i
+    // després s'aplana): així es veu des del bivac. Lluny, cau dins la boira.
+    const t = Math.max(a1 - 2.6, 0);
     const crest =
-      GROUND_Y - 0.1 - 2.0 * (1 - Math.exp(-Math.max(t, 0) / 6)) - Math.max(t, 0) * 0.08 +
-      fbm(nDetail, a1 * 0.12, 1.7, 3) * 1.4 * smoothstep(5, 20, a1);
+      GROUND_Y - 0.17 * t + 0.0009 * Math.min(t, 80) * Math.min(t, 80) -
+      0.0005 * Math.max(t - 80, 0) * Math.max(t - 80, 0) +
+      fbm(nDetail, a1 * 0.12, 1.7, 3) * 0.7 * smoothstep(8, 25, a1);
     const width = 0.05 / (1 + a1 * 0.02);
     const ridge = crest - c1 * c1 * width - c1 * 0.35;
-    y = y + (smax(y, ridge, 1.5) - y) * smoothstep(2.5, 5.0, a1);
+    // Dins el passadís de la carena mana la carena; als costats, la que sigui més alta.
+    const inCorridor = 1 - smoothstep(1.5, 5.0, c1);
+    const shaped = smax(y, ridge, 1.5) * (1 - inCorridor) + ridge * inCorridor;
+    y = y + (shaped - y) * smoothstep(1.0, 2.0, a1) * w;
   }
 
   // Avantcim: el cim continua pujant uns metres a l'esquerra, enrere.

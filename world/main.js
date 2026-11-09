@@ -9,6 +9,7 @@ import { createSummit } from "./landscape/summit.js";
 import { createMountains } from "./landscape/mountains.js";
 import { createCloudSea, createHighClouds } from "./effects/clouds.js";
 import { createVegetation } from "./effects/grass.js";
+import { createMoss } from "./effects/moss.js";
 import { createShootingStars } from "./effects/shootingStar.js";
 import { createBivac } from "./bivac/bivac.js";
 
@@ -17,7 +18,7 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.5";
+const SCENE_VERSION = "0.6";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 
@@ -112,6 +113,7 @@ const mistBanks = createHighClouds({
 scene.add(mistBanks.group);
 
 scene.add(createSummit());
+scene.add(createMoss());
 scene.add(createVegetation());
 
 const bivac = createBivac();
