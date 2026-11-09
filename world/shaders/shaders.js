@@ -83,6 +83,52 @@ vec3 applyHaze(vec3 col, vec3 wp) {
 }
 `;
 
+// Textura de roca pintada: taques grans, plaques amb esquerdes i pigues de liquen.
+export const ROCK = /* glsl */ `
+vec2 hash22(vec2 p) {
+  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+  return fract(sin(p) * 43758.5453);
+}
+
+// Distància a la vora de la cel·la de Voronoi (0 = sobre l'esquerda).
+float voronoiEdge(vec2 x) {
+  vec2 n = floor(x);
+  vec2 f = fract(x);
+  float d1 = 8.0;
+  float d2 = 8.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 g = vec2(float(i), float(j));
+      vec2 r = g + hash22(n + g) * 0.85 - f;
+      float d = dot(r, r);
+      if (d < d1) { d2 = d1; d1 = d; }
+      else if (d < d2) { d2 = d; }
+    }
+  }
+  return sqrt(d2) - sqrt(d1);
+}
+
+float rockPattern(vec2 p) {
+  float mottle = fbm3(p * 0.55);
+  float plates = smoothstep(0.0, 0.07, voronoiEdge(p * 1.6 + mottle * 0.8));
+  float fine = smoothstep(0.0, 0.05, voronoiEdge(p * 4.3 + 7.1));
+  float lichen = smoothstep(0.78, 0.86, vnoise(p * 9.0)) * 0.5;
+  float v = (0.72 + 0.5 * mottle) * mix(0.45, 1.0, plates) * mix(0.75, 1.0, fine);
+  return v + lichen * 0.18;
+}
+
+vec3 rockAlbedo(vec3 base, vec3 p, vec3 n) {
+#ifdef ROCK_GROUND
+  float v = rockPattern(p.xz);
+#else
+  vec3 w = pow(abs(n), vec3(4.0));
+  w /= (w.x + w.y + w.z);
+  float v = rockPattern(p.yz) * w.x + rockPattern(p.xz) * w.y + rockPattern(p.xy) * w.z;
+#endif
+  return base * v;
+}
+`;
+
 // ------------------------------------------------------------------
 // Material general: roques, terra, sacs, motxilles...
 // ------------------------------------------------------------------
@@ -117,6 +163,10 @@ varying vec3 vWorld;
 varying vec3 vNormalW;
 varying vec3 vColor;
 ${LIGHTING}
+#if defined(ROCK) || defined(ROCK_GROUND)
+${NOISE}
+${ROCK}
+#endif
 
 void main() {
 #ifdef FLAT
@@ -126,6 +176,9 @@ void main() {
   if (!gl_FrontFacing) n = -n;
 #endif
   vec3 albedo = uColor * vColor;
+#if defined(ROCK) || defined(ROCK_GROUND)
+  albedo = rockAlbedo(albedo, vWorld, n);
+#endif
   vec3 col = shadeStylized(albedo, n, vWorld);
   col = applyHaze(col, vWorld);
   gl_FragColor = vec4(col, 1.0);
@@ -216,10 +269,10 @@ void main() {
   float snowMask = vH + (n.y - 0.6) * 0.55 + (nz - 0.5) * 0.3;
   float snow = smoothstep(uSnowLine - 0.03, uSnowLine + 0.03, snowMask);
 
-  vec3 rockShadow = vec3(0.026, 0.032, 0.05);
-  vec3 rockLit = vec3(0.075, 0.085, 0.12);
-  vec3 snowShadow = vec3(0.1, 0.125, 0.19);
-  vec3 snowLit = vec3(0.34, 0.39, 0.52);
+  vec3 rockShadow = vec3(0.018, 0.022, 0.036);
+  vec3 rockLit = vec3(0.045, 0.052, 0.078);
+  vec3 snowShadow = vec3(0.065, 0.08, 0.125);
+  vec3 snowLit = vec3(0.2, 0.235, 0.32);
 
   vec3 rock = mix(rockShadow, rockLit, light) * (0.85 + 0.3 * nz);
   vec3 sn = mix(snowShadow, snowLit, light);
@@ -253,35 +306,41 @@ float cloudField(vec2 p) {
 `;
 
 export const CLOUD_SEA = {
+  // El camp de núvols es calcula als vèrtexs (barat) i el fragment només hi
+  // afegeix una mica de detall: abans era la part més cara de l'escena.
   vertex: /* glsl */ `
 ${CLOUD_FIELD}
 uniform float uCloudAmp;
+uniform vec3 uMoonDir;
 varying vec3 vWorld;
+varying float vShade;
+varying float vPuff;
 
 void main() {
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWorld = wp.xyz;
   float h = cloudField(wp.xz);
+  float h2 = cloudField(wp.xz + normalize(uMoonDir.xz) * 7.0);
+  vShade = smoothstep(0.35, 0.75, 0.55 + (h - h2) * 7.5);
+  vPuff = smoothstep(0.3, 0.72, h);
   wp.y += (h - 0.45) * uCloudAmp;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `,
   fragment: /* glsl */ `
-${CLOUD_FIELD}
-uniform vec3 uMoonDir;
+${NOISE}
+uniform float uTime;
 uniform vec3 uHazeColor;
 uniform vec3 uCloudLit;
 uniform vec3 uCloudShadow;
 varying vec3 vWorld;
+varying float vShade;
+varying float vPuff;
 
 void main() {
-  vec2 p = vWorld.xz;
-  float h = cloudField(p);
-  vec2 ld = normalize(uMoonDir.xz);
-  float h2 = cloudField(p + ld * 7.0);
-  float shade = smoothstep(0.35, 0.75, 0.55 + (h - h2) * 7.5);
-  float puff = smoothstep(0.3, 0.72, h);
-  vec3 col = mix(uCloudShadow, uCloudLit, shade * 0.65 + puff * 0.35);
+  float detail = vnoise(vWorld.xz * 0.05 + vec2(uTime * 0.01, 0.0)) - 0.5;
+  float k = clamp(vShade * 0.65 + vPuff * 0.35 + detail * 0.18, 0.0, 1.0);
+  vec3 col = mix(uCloudShadow, uCloudLit, k);
 
   float dist = length(vWorld - cameraPosition);
   float f = 1.0 - exp(-dist / 380.0);

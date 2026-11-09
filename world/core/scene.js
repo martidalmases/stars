@@ -168,7 +168,7 @@ function createBackgroundStarField(radius = 980, count = 1400) {
   return stars;
 }
 
-export function createSkySphere(camera = null) {
+export function createSkySphere(camera = null, renderer = null) {
   console.log("[Sky] Initializing night sky dome (3-color gradient + horizon haze + stars)...");
 
   const geo = new THREE.SphereGeometry(1010, 64, 64);
@@ -179,7 +179,7 @@ export function createSkySphere(camera = null) {
       horizonColor: { value: new THREE.Color(0x101a2c) },
       midColor: { value: new THREE.Color(0x081126) },
       zenithColor: { value: new THREE.Color(0x010205) },
-      pollutionBandColor: { value: new THREE.Vector3(0.17, 0.215, 0.31) }
+      pollutionBandColor: { value: new THREE.Vector3(0.12, 0.155, 0.23) }
     },
     vertexShader: `
       varying vec3 vWorldDir;
@@ -279,7 +279,7 @@ export function createSkySphere(camera = null) {
 
         float horizonBand = exp(-pow(abs(vWorldDir.y) / 0.13, 2.0));
         // Cel més fosc i una claror suau que puja de l'horitzó (com a les fotos de nit).
-        skyColor *= 0.72;
+        skyColor *= 0.62;
         float above = max(vWorldDir.y + 0.02, 0.0);
         float front = 0.72 + 0.28 * (0.5 - 0.5 * vWorldDir.z);
         float halo = (exp(-above / 0.055) * 0.75 + exp(-above / 0.2) * 0.32) * front;
@@ -328,11 +328,53 @@ export function createSkySphere(camera = null) {
   sky.frustumCulled = false;
   sky.renderOrder = -2;
 
+  // El cel no canvia: el pintem un sol cop en un cubemap i després només el llegim.
+  // Així el shader car (nebulosa, Via Làctia) no es recalcula cada fotograma.
+  let dome = sky;
+  if (renderer) {
+    const target = new THREE.WebGLCubeRenderTarget(1024, {
+      type: THREE.HalfFloatType,
+      generateMipmaps: false,
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter
+    });
+    const cubeCamera = new THREE.CubeCamera(1, 3000, target);
+    const bakeScene = new THREE.Scene();
+    bakeScene.add(sky);
+    cubeCamera.update(renderer, bakeScene);
+    bakeScene.remove(sky);
+    sky.geometry.dispose();
+    nightGradientMat.dispose();
+
+    dome = new THREE.Mesh(
+      new THREE.SphereGeometry(1010, 48, 32),
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        uniforms: { uSky: { value: target.texture } },
+        vertexShader: `
+          varying vec3 vDir;
+          void main() {
+            vDir = (modelMatrix * vec4(position, 1.0)).xyz;
+            gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform samplerCube uSky;
+          varying vec3 vDir;
+          void main() {
+            gl_FragColor = vec4(texture(uSky, normalize(vDir)).rgb, 1.0);
+          }
+        `
+      })
+    );
+    dome.frustumCulled = false;
+    dome.renderOrder = -2;
+  }
+
   const skyGroup = new THREE.Group();
-  skyGroup.add(sky);
+  skyGroup.add(dome);
   skyGroup.add(createBackgroundStarField());
 
-  // Si cal, la càmera manté el cel centrat (ara és fixa a l'origen).
   skyGroup.userData.update = () => {
     if (camera) skyGroup.position.copy(camera.position);
   };

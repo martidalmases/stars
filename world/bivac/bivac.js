@@ -331,38 +331,32 @@ export function createBivac() {
   group.add(createBag(LAYOUT.ownBag, COLORS.ownBag));
   group.add(createBag(LAYOUT.partnerBag, COLORS.partnerBag, { closedHood: true }));
 
-  // Motxilla dreta, recolzada enrere i girada cap a tu.
-  const packA = new THREE.Group();
-  const packAInner = createBackpack(LAYOUT.packA.color);
-  packAInner.rotation.x = 0.1;
-  packA.add(packAInner);
-  placeOnGround(packA, LAYOUT.packA.x, LAYOUT.packA.z);
-  packA.rotation.y = Math.atan2(-LAYOUT.packA.x, -LAYOUT.packA.z) + 0.25;
-  group.add(packA);
+  // Dues motxilles estirades d'esquena a terra.
+  function lyingPack({ x, z, color }, yaw) {
+    const pack = new THREE.Group();
+    const inner = createBackpack(color);
+    inner.rotation.x = -Math.PI / 2;
+    inner.position.y = 0.12;
+    pack.add(inner);
+    placeOnGround(pack, x, z);
+    pack.rotation.y = yaw;
+    group.add(pack);
+    return pack;
+  }
+  lyingPack(LAYOUT.packA, 0.35);
+  lyingPack(LAYOUT.packB, 2.3);
 
-  // Motxilla estirada d'esquena a terra.
-  const packB = new THREE.Group();
-  const packBInner = createBackpack(LAYOUT.packB.color);
-  packBInner.rotation.x = -Math.PI / 2;
-  packBInner.position.y = 0.12;
-  packB.add(packBInner);
-  placeOnGround(packB, LAYOUT.packB.x, LAYOUT.packB.z);
-  packB.rotation.y = 2.3;
-  group.add(packB);
-
-  // Bastons recolzats a la motxilla dreta: el puny descansa sobre la tapa.
-  packA.updateMatrixWorld(true);
-  const rest = new THREE.Vector3(0, 0.6, -0.02).applyMatrix4(packAInner.matrixWorld);
+  // Bastons estirats a terra al costat de la motxilla.
+  const ax = LAYOUT.packA.x;
+  const az = LAYOUT.packA.z;
   [
-    [-0.36, 0.22, 0.04],
-    [-0.28, 0.34, -0.04]
-  ].forEach(([dx, dz, spread]) => {
-    const from = new THREE.Vector3(rest.x + dx, 0, rest.z + dz);
-    from.y = groundHeight(from.x, from.z);
-    const top = rest.clone().add(new THREE.Vector3(spread, 0.0, spread));
-    const dir = top.clone().sub(from).normalize();
-    const to = from.clone().addScaledVector(dir, 1.1);
-    group.add(createPole(from, to));
+    [ax - 0.42, az + 0.45, ax - 0.12, az - 0.62],
+    [ax - 0.5, az + 0.32, ax - 0.06, az - 0.7]
+  ].forEach(([x0, z0, x1, z1]) => {
+    const from = new THREE.Vector3(x0, groundHeight(x0, z0) + 0.012, z0);
+    const to = new THREE.Vector3(x1, groundHeight(x1, z1) + 0.02, z1);
+    const dir = to.clone().sub(from).normalize();
+    group.add(createPole(from, from.clone().addScaledVector(dir, 1.1)));
   });
 
   // Fanalet, tasses i termo sobre la llosa.

@@ -3,14 +3,15 @@ import { createNoise2D, mulberry32, smoothstep, clamp } from "../core/noise.js";
 import { stylizedMaterial } from "../core/materials.js";
 import { groundHeight, groundSlope, campWeight, edgeRadius } from "./terrain.js";
 import { LAYOUT, inClearZone } from "../bivac/layout.js";
+import { createCrackMesh } from "./cracks.js";
 
 // ------------------------------------------------------------------
 // Terra del cim
 // ------------------------------------------------------------------
 function createGround() {
-  const nT = 150;
-  const nR = 72;
-  const maxR = 60;
+  const nT = 220;
+  const nR = 120;
+  const maxR = 500;
   const patch = createNoise2D(31);
   const patch2 = createNoise2D(37);
 
@@ -18,13 +19,12 @@ function createGround() {
   const colors = [];
   const indices = [];
 
-  const grass = [0.15, 0.165, 0.11];
-  const dryGrass = [0.24, 0.2, 0.13];
-  const rock = [0.25, 0.25, 0.27];
-  const gravel = [0.2, 0.19, 0.18];
+  const stone = [0.25, 0.25, 0.265];
+  const darkStone = [0.17, 0.17, 0.185];
+  const soil = [0.12, 0.115, 0.1];
 
   for (let j = 0; j <= nR; j += 1) {
-    const r = maxR * Math.pow(j / nR, 1.75);
+    const r = maxR * Math.pow(j / nR, 2.3);
     for (let i = 0; i <= nT; i += 1) {
       const th = (i / nT) * Math.PI * 2;
       const x = Math.sin(th) * r;
@@ -32,19 +32,15 @@ function createGround() {
       const y = groundHeight(x, z);
       positions.push(x, y, z);
 
+      const p = patch(x * 0.3, z * 0.3) / 0.7;
+      const p2 = patch2(x * 1.1, z * 1.1) / 0.7;
       const slope = groundSlope(x, z);
-      const p = patch(x * 0.35, z * 0.35) / 0.7;
-      const p2 = patch2(x * 1.2, z * 1.2) / 0.7;
-      const grassAmt = smoothstep(-0.25, 0.35, p) * (1 - smoothstep(0.35, 0.8, slope));
-      const rockAmt = smoothstep(0.45, 1.1, slope);
       const c = [0, 0, 0];
       for (let k = 0; k < 3; k += 1) {
-        let v = gravel[k] + (dryGrass[k] - gravel[k]) * smoothstep(-0.4, 0.6, p2) * 0.5;
-        v += (grass[k] - v) * grassAmt;
-        v += (rock[k] - v) * rockAmt;
-        // Al campament, terra trepitjada.
-        v += (gravel[k] - v) * (1 - campWeight(x, z)) * 0.55;
-        c[k] = v * (0.92 + 0.16 * p2);
+        let v = stone[k] + (darkStone[k] - stone[k]) * smoothstep(-0.3, 0.6, p);
+        // Una mica de terra fosca als replans, mai als pendents.
+        v += (soil[k] - v) * smoothstep(0.35, 0.8, p2) * (1 - smoothstep(0.2, 0.5, slope)) * 0.7;
+        c[k] = v;
       }
       colors.push(c[0], c[1], c[2]);
     }
@@ -67,7 +63,7 @@ function createGround() {
   geo.setIndex(indices);
   geo.computeVertexNormals();
 
-  const mesh = new THREE.Mesh(geo, stylizedMaterial({ flat: true, vertexColors: true }));
+  const mesh = new THREE.Mesh(geo, stylizedMaterial({ flat: true, vertexColors: true, rock: "ground" }));
   mesh.frustumCulled = false;
   return mesh;
 }
@@ -132,7 +128,7 @@ class RockBuilder {
     geo.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
     geo.setAttribute("aColor", new THREE.Float32BufferAttribute(this.colors, 3));
     geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, stylizedMaterial({ flat: true, vertexColors: true }));
+    const mesh = new THREE.Mesh(geo, stylizedMaterial({ flat: true, vertexColors: true, rock: "block" }));
     mesh.frustumCulled = false;
     return mesh;
   }
@@ -168,16 +164,18 @@ function addScatteredRocks(builder) {
   }
 
   // Blocs grans a les vores del cim per emmarcar la vista.
+  // Al costat esquerre (on puja l'avantcim) i algun a la dreta. Endavant no:
+  // la vista ha de quedar oberta.
   const outcrops = [
-    { th: -0.95, r: 7.6, s: 1.7 },
-    { th: -1.38, r: 5.6, s: 1.15 },
-    { th: -1.75, r: 4.6, s: 0.9 },
-    { th: 1.02, r: 8.2, s: 2.3 },
-    { th: 1.48, r: 6.3, s: 1.35 },
-    { th: 1.85, r: 5.0, s: 1.0 },
-    { th: 0.38, r: 10.6, s: 1.4 },
-    { th: -0.42, r: 11.2, s: 1.05 },
-    { th: 0.05, r: 12.5, s: 0.8 }
+    { th: -0.78, r: 4.7, s: 0.75 },
+    { th: -1.02, r: 5.4, s: 1.25 },
+    { th: -1.38, r: 6.2, s: 1.7 },
+    { th: -1.72, r: 5.3, s: 1.35 },
+    { th: -2.05, r: 4.6, s: 1.0 },
+    { th: -1.25, r: 9.5, s: 2.2 },
+    { th: -1.6, r: 11.5, s: 2.6 },
+    { th: 1.32, r: 4.6, s: 0.8 },
+    { th: 1.62, r: 5.2, s: 1.15 }
   ];
   outcrops.forEach(({ th, r, s }) => {
     const x = Math.sin(th) * r;
@@ -267,6 +265,7 @@ export function createSummit() {
   addFita(rocks);
   addSlab(rocks);
   group.add(rocks.build());
+  group.add(createCrackMesh());
 
   return group;
 }

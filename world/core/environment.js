@@ -12,20 +12,20 @@ export const shared = {
 
   // Direcció cap a la lluna (darrere i a l'esquerra de la càmera).
   uMoonDir: { value: v3(-0.45, 0.5, 0.75).normalize() },
-  uMoonColor: { value: v3(0.16, 0.19, 0.28) },
-  uSkyAmbient: { value: v3(0.045, 0.056, 0.088) },
-  uGroundAmbient: { value: v3(0.014, 0.014, 0.02) },
+  uMoonColor: { value: v3(0.115, 0.14, 0.205) },
+  uSkyAmbient: { value: v3(0.032, 0.04, 0.064) },
+  uGroundAmbient: { value: v3(0.01, 0.01, 0.015) },
 
   uLanternPos: { value: v3(0, -0.4, -2) },
   uLanternColor: { value: v3(1.0, 0.52, 0.22) },
   uLanternIntensity: { value: 1.0 },
 
   // Boira de distància: es fon amb la claror de l'horitzó.
-  uHazeColor: { value: v3(0.1, 0.122, 0.178) },
+  uHazeColor: { value: v3(0.072, 0.088, 0.13) },
   // Boira baixa que s'acumula sobre el mar de núvols i a les valls.
-  uMistColor: { value: v3(0.085, 0.105, 0.155) },
+  uMistColor: { value: v3(0.06, 0.074, 0.11) },
   uCloudY: { value: CLOUD_Y },
-  uCloudColor: { value: v3(0.1, 0.125, 0.18) }
+  uCloudColor: { value: v3(0.06, 0.074, 0.11) }
 };
 
 export function updateEnvironment(t) {

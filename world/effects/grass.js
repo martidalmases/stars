@@ -1,11 +1,11 @@
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
-import { createNoise2D, mulberry32, smoothstep } from "../core/noise.js";
+import { mulberry32 } from "../core/noise.js";
 import { grassMaterial } from "../core/materials.js";
-import { groundHeight, groundSlope, edgeRadius } from "../landscape/terrain.js";
-import { inClearZone } from "../bivac/layout.js";
+import { groundHeight } from "../landscape/terrain.js";
+import { crackPlantSpots } from "../landscape/cracks.js";
 
 // Geometria d'una mata d'herba (alçada 1, s'escala per instància).
-function tuftGeometry(rng, { blades = 9, root = [0.05, 0.06, 0.04], tip = [0.22, 0.2, 0.12] } = {}) {
+function tuftGeometry(rng, { blades = 9, root = [0.05, 0.06, 0.04], tip = [0.22, 0.2, 0.12], width = 1, spread = 0.12, lean = 1 } = {}) {
   const positions = [];
   const colors = [];
   const heights = [];
@@ -15,11 +15,11 @@ function tuftGeometry(rng, { blades = 9, root = [0.05, 0.06, 0.04], tip = [0.22,
   for (let b = 0; b < blades; b += 1) {
     const facing = rng() * Math.PI * 2;
     const leanDir = rng() * Math.PI * 2;
-    const lean = 0.12 + rng() * 0.4;
+    const leanAmt = (0.12 + rng() * 0.4) * lean;
     const h = 0.55 + rng() * 0.45;
-    const w = 0.045 + rng() * 0.035;
-    const bx = (rng() - 0.5) * 0.12;
-    const bz = (rng() - 0.5) * 0.12;
+    const w = (0.045 + rng() * 0.035) * width;
+    const bx = (rng() - 0.5) * spread;
+    const bz = (rng() - 0.5) * spread;
     const px = Math.cos(facing);
     const pz = Math.sin(facing);
     const start = positions.length / 3;
@@ -27,7 +27,7 @@ function tuftGeometry(rng, { blades = 9, root = [0.05, 0.06, 0.04], tip = [0.22,
     for (let s = 0; s <= segs; s += 1) {
       const t = s / segs;
       const width = w * Math.pow(1 - t, 0.85) + 0.002;
-      const off = lean * t * t * h;
+      const off = leanAmt * t * t * h;
       const cx = bx + Math.cos(leanDir) * off;
       const cz = bz + Math.sin(leanDir) * off;
       const y = t * h;
@@ -107,38 +107,26 @@ function flowerGeometry(petal = [0.6, 0.62, 0.66]) {
   return geo;
 }
 
-function scatter({ geometry, count, seed, minScale, maxScale, clump, density = 0.0, tints }) {
+// Planta les mates als punts donats (a les esquerdes).
+function plantAt({ geometry, spots, seed, minScale, maxScale, tints, keep = 1 }) {
   const rng = mulberry32(seed);
-  const clumpNoise = createNoise2D(seed + 3);
   const matrices = [];
   const tintValues = [];
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const e = new THREE.Euler();
 
-  for (let attempt = 0; attempt < count * 12 && matrices.length < count; attempt += 1) {
-    const th = (rng() * 2 - 1) * Math.PI;
-    const R = edgeRadius(th);
-    // Més densitat a prop: és on es veu.
-    const r = 0.6 + Math.pow(rng(), 1.5) * (R + 1.2);
-    const x = Math.sin(th) * r;
-    const z = -Math.cos(th) * r;
-
-    if (inClearZone(x, z, 0.05)) continue;
-    if (groundSlope(x, z) > 0.7) continue;
-    const c = clumpNoise(x * clump, z * clump) / 0.7;
-    if (smoothstep(-0.35 + density, 0.35 + density, c) < rng()) continue;
-
-    const s = minScale + Math.pow(rng(), 1.6) * (maxScale - minScale);
-    e.set((rng() - 0.5) * 0.25, rng() * Math.PI * 2, (rng() - 0.5) * 0.25);
+  spots.forEach(({ x, z, size }) => {
+    if (rng() > keep) return;
+    const s = (minScale + Math.pow(rng(), 1.4) * (maxScale - minScale)) * (0.75 + 0.35 * Math.min(1.3, size));
+    e.set((rng() - 0.5) * 0.3, rng() * Math.PI * 2, (rng() - 0.5) * 0.3);
     q.setFromEuler(e);
-    m.compose(new THREE.Vector3(x, groundHeight(x, z) - 0.01, z), q, new THREE.Vector3(s * 1.15, s, s * 1.15));
+    m.compose(new THREE.Vector3(x, groundHeight(x, z) - 0.015, z), q, new THREE.Vector3(s * 0.9, s, s * 0.9));
     matrices.push(m.clone());
-
     const tint = tints[Math.floor(rng() * tints.length)];
-    const v = 0.88 + rng() * 0.24;
+    const v = 0.85 + rng() * 0.3;
     tintValues.push(tint[0] * v, tint[1] * v, tint[2] * v);
-  }
+  });
 
   geometry.setAttribute("aTint", new THREE.InstancedBufferAttribute(new Float32Array(tintValues), 3));
   const mesh = new THREE.InstancedMesh(geometry, grassMaterial(), matrices.length);
@@ -151,59 +139,44 @@ function scatter({ geometry, count, seed, minScale, maxScale, clump, density = 0
 export function createVegetation() {
   const group = new THREE.Group();
   const rng = mulberry32(5);
+  const spots = crackPlantSpots(5, 0.38);
+  const flowerSpots = crackPlantSpots(9, 1.6);
 
+  // Tiges llargues i primes que surten de les esquerdes.
   group.add(
-    scatter({
-      geometry: tuftGeometry(rng),
-      count: 1400,
+    plantAt({
+      geometry: tuftGeometry(rng, { blades: 7, width: 0.45, spread: 0.05, lean: 1.3, root: [0.04, 0.045, 0.03], tip: [0.24, 0.2, 0.11] }),
+      spots,
       seed: 61,
-      minScale: 0.08,
-      maxScale: 0.24,
-      clump: 0.45,
-      tints: [
-        [1, 1, 1],
-        [1.25, 1.0, 0.7],
-        [0.85, 0.95, 1.0]
-      ]
+      minScale: 0.22,
+      maxScale: 0.55,
+      keep: 0.85,
+      tints: [[1, 1, 1], [1.25, 1.0, 0.7], [0.85, 0.95, 1.0]]
     })
   );
 
+  // Alguna mata més baixa i atapeïda.
   group.add(
-    scatter({
-      geometry: tuftGeometry(rng, { blades: 16, root: [0.06, 0.05, 0.03], tip: [0.3, 0.22, 0.11] }),
-      count: 420,
+    plantAt({
+      geometry: tuftGeometry(rng, { blades: 12, width: 0.8, spread: 0.08, lean: 0.8, root: [0.05, 0.05, 0.03], tip: [0.2, 0.17, 0.09] }),
+      spots,
       seed: 67,
-      minScale: 0.16,
-      maxScale: 0.32,
-      clump: 0.3,
-      density: 0.15,
-      tints: [[1, 1, 1], [1.1, 1.0, 0.85]]
-    })
-  );
-
-  group.add(
-    scatter({
-      geometry: flowerGeometry([0.62, 0.64, 0.68]),
-      count: 140,
-      seed: 71,
       minScale: 0.1,
       maxScale: 0.2,
-      clump: 0.6,
-      density: 0.1,
-      tints: [[1, 1, 1], [1.0, 0.92, 0.95]]
+      keep: 0.35,
+      tints: [[1, 1, 1], [1.15, 1.0, 0.8]]
     })
   );
 
   group.add(
-    scatter({
-      geometry: flowerGeometry([0.36, 0.33, 0.58]),
-      count: 70,
-      seed: 73,
-      minScale: 0.09,
-      maxScale: 0.16,
-      clump: 0.7,
-      density: 0.2,
-      tints: [[1, 1, 1]]
+    plantAt({
+      geometry: flowerGeometry([0.55, 0.57, 0.6]),
+      spots: flowerSpots,
+      seed: 71,
+      minScale: 0.14,
+      maxScale: 0.26,
+      keep: 0.7,
+      tints: [[1, 1, 1], [1.0, 0.92, 0.95]]
     })
   );
 

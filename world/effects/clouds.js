@@ -15,8 +15,8 @@ export function createCloudSea() {
     uniforms: {
       ...shared,
       uCloudAmp: { value: 14 },
-      uCloudLit: { value: new THREE.Vector3(0.16, 0.19, 0.265) },
-      uCloudShadow: { value: new THREE.Vector3(0.05, 0.062, 0.09) }
+      uCloudLit: { value: new THREE.Vector3(0.105, 0.127, 0.18) },
+      uCloudShadow: { value: new THREE.Vector3(0.034, 0.042, 0.064) }
     },
     vertexShader: CLOUD_SEA.vertex,
     fragmentShader: CLOUD_SEA.fragment
@@ -76,7 +76,7 @@ export function createHighClouds({
   elevation = [4, 15],
   distance = [520, 780],
   widthRange = [260, 500],
-  color = [0.17, 0.2, 0.28],
+  color = [0.12, 0.14, 0.2],
   opacity = [0.3, 0.5],
   speedDeg = [0.12, 0.28]
 } = {}) {

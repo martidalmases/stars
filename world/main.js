@@ -17,7 +17,7 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.3";
+const SCENE_VERSION = "0.4";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 
@@ -90,7 +90,7 @@ document.addEventListener("pointerlockchange", () => {
 // Paisatge
 // ==============================
 
-const sky = createSkySphere(camera);
+const sky = createSkySphere(camera, renderer);
 scene.add(sky);
 scene.add(createMountains());
 scene.add(createCloudSea());
@@ -105,7 +105,7 @@ const mistBanks = createHighClouds({
   elevation: [-3.2, -0.6],
   distance: [230, 640],
   widthRange: [220, 420],
-  color: [0.1, 0.122, 0.175],
+  color: [0.068, 0.083, 0.122],
   opacity: [0.45, 0.75],
   speedDeg: [0.05, 0.12]
 });

@@ -1,30 +1,59 @@
-// Forma del cim: un replà una mica pla però irregular, que cau per tots costats
-// cap al mar de núvols. Funcions pures (sense three.js) per poder col·locar coses a sobre.
+// Forma del cim. No és un cercle:
+// - el bivac és en una espatlla rocosa que s'acaba de seguida endavant i a la dreta
+//   (la vista s'obre cap al buit, el mar de núvols i les serralades),
+// - endavant a la dreta en surt un esperó/carena que baixa i es perd dins la boira,
+// - a l'esquerra i enrere el cim continua pujant uns metres (avantcim).
+// Funcions pures (sense three.js) per poder col·locar coses a sobre.
 
 import { createNoise2D, fbm, smoothstep } from "../core/noise.js";
 
-export const GROUND_Y = -0.5;
+// Estàs mig assegut dins el sac: els ulls (la càmera) són a 0, el terra a -0.85.
+export const GROUND_Y = -0.85;
 export const CLOUD_Y = -40;
 
 const nBumps = createNoise2D(7);
 const nDetail = createNoise2D(19);
 const nEdge = createNoise2D(23);
+const nRidge = createNoise2D(29);
+const nLedge = createNoise2D(41);
+
+const rad = (d) => (d * Math.PI) / 180;
+const dirOf = (az) => [Math.sin(rad(az)), -Math.cos(rad(az))];
+
+export const RIDGE_AZ = 42;
+export const UPPER_AZ = -118;
+const RIDGE_DIR = dirOf(RIDGE_AZ);
+const UPPER_DIR = dirOf(UPPER_AZ);
 
 // El·lipse del campament: aquí el terra és pla perquè hi caben les esterilles.
 const CAMP = { cx: 0.36, cz: -0.85, rx: 1.55, rz: 2.15 };
 
-// 0 dins el campament (pla), 1 fora.
 export function campWeight(x, z) {
   const dx = (x - CAMP.cx) / CAMP.rx;
   const dz = (z - CAMP.cz) / CAMP.rz;
   return smoothstep(0.85, 1.5, Math.sqrt(dx * dx + dz * dz));
 }
 
-// Radi del replà en cada direcció (on comença la caiguda).
+function angleDiff(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+// Radi del replà en cada direcció (on comença la caiguda forta).
+// Endavant i a la dreta s'acaba aviat: la vista queda oberta.
 export function edgeRadius(theta) {
   const c = Math.cos(theta);
   const s = Math.sin(theta);
-  return 7.6 + 2.6 * fbm(nEdge, c * 1.3 + 4.0, s * 1.3 - 2.0, 3) / 0.7;
+  const noise = fbm(nEdge, c * 1.3 + 4.0, s * 1.3 - 2.0, 3) / 0.7;
+  const open = Math.exp(-Math.pow(angleDiff(theta, rad(30)) / rad(70), 2));
+  return 6.4 - 2.4 * open + 1.4 * noise * (1 - open * 0.6);
+}
+
+function smax(a, b, k) {
+  const h = Math.max(k - Math.abs(a - b), 0) / k;
+  return Math.max(a, b) + h * h * k * 0.25;
 }
 
 export function groundHeight(x, z) {
@@ -32,17 +61,44 @@ export function groundHeight(x, z) {
   const theta = Math.atan2(x, -z);
   const w = campWeight(x, z);
 
+  // Replà: roca ondulada amb petits graons (estrats).
   let y = GROUND_Y;
-  y += w * (fbm(nBumps, x * 0.16, z * 0.16, 3) * 0.42 + fbm(nDetail, x * 0.62, z * 0.62, 2) * 0.13);
-  // El cim és lleugerament bombat: cau suaument cap a les vores.
+  const bumps = fbm(nBumps, x * 0.16, z * 0.16, 3) * 0.35 + fbm(nDetail, x * 0.62, z * 0.62, 2) * 0.1;
+  const ledge = Math.floor((fbm(nLedge, x * 0.22, z * 0.22, 2) / 0.7 + 1) * 2.2) / 2.2;
+  y += w * (bumps + ledge * 0.1);
   const dome = Math.max(0, r - 2.5);
-  y -= dome * dome * 0.028;
+  y -= dome * dome * 0.03;
 
   const R = edgeRadius(theta);
   if (r > R) {
     const d = r - R;
-    y -= Math.pow(d * 0.6, 1.65) + d * 0.25;
+    y -= Math.pow(d * 0.9, 1.6) + d * 0.6;
   }
+
+  // Esperó: un graó sota el replà i després una carena llarga i suau que s'allunya
+  // i s'enfonsa dins la boira. Té perfil còncau perquè es vegi des de dalt.
+  const a1 = x * RIDGE_DIR[0] + z * RIDGE_DIR[1];
+  if (a1 > 2.5) {
+    const wobble = fbm(nRidge, a1 * 0.03, 3.3, 3) * 10 * smoothstep(10, 60, a1);
+    const c1 = Math.abs(x * RIDGE_DIR[1] - z * RIDGE_DIR[0] + wobble);
+    const t = a1 - 3.5;
+    const crest =
+      GROUND_Y - 0.1 - 2.0 * (1 - Math.exp(-Math.max(t, 0) / 6)) - Math.max(t, 0) * 0.08 +
+      fbm(nDetail, a1 * 0.12, 1.7, 3) * 1.4 * smoothstep(5, 20, a1);
+    const width = 0.05 / (1 + a1 * 0.02);
+    const ridge = crest - c1 * c1 * width - c1 * 0.35;
+    y = y + (smax(y, ridge, 1.5) - y) * smoothstep(2.5, 5.0, a1);
+  }
+
+  // Avantcim: el cim continua pujant uns metres a l'esquerra, enrere.
+  const a2 = x * UPPER_DIR[0] + z * UPPER_DIR[1];
+  if (a2 > 1.5) {
+    const c2 = Math.abs(x * UPPER_DIR[1] - z * UPPER_DIR[0]);
+    const rise = GROUND_Y + 4.2 * smoothstep(2.5, 13, a2) - 3.2 * smoothstep(14, 30, a2);
+    const upper = rise - c2 * c2 * 0.06 - c2 * 0.2 + fbm(nBumps, a2 * 0.25, c2 * 0.25, 2) * 0.8;
+    y = y + (smax(y, upper, 1.5) - y) * smoothstep(1.5, 3.5, a2);
+  }
+
   return y;
 }
 

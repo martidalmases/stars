@@ -18,7 +18,7 @@ export function createDreamyController(
     initialPitchDeg = 8,
     minPitchDeg = -42,
     maxPitchDeg = 80,
-    maxYawDeg = 90,
+    maxYawDeg = 50,
     isBlocked = () => false
   } = {}
 ) {
