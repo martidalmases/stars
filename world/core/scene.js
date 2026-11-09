@@ -179,7 +179,7 @@ export function createSkySphere(camera = null, renderer = null) {
       horizonColor: { value: new THREE.Color(0x101a2c) },
       midColor: { value: new THREE.Color(0x081126) },
       zenithColor: { value: new THREE.Color(0x010205) },
-      pollutionBandColor: { value: new THREE.Vector3(0.12, 0.155, 0.23) }
+      pollutionBandColor: { value: new THREE.Vector3(0.1, 0.13, 0.195) }
     },
     vertexShader: `
       varying vec3 vWorldDir;
@@ -279,7 +279,7 @@ export function createSkySphere(camera = null, renderer = null) {
 
         float horizonBand = exp(-pow(abs(vWorldDir.y) / 0.13, 2.0));
         // Cel més fosc i una claror suau que puja de l'horitzó (com a les fotos de nit).
-        skyColor *= 0.62;
+        skyColor *= 0.55;
         float above = max(vWorldDir.y + 0.02, 0.0);
         float front = 0.72 + 0.28 * (0.5 - 0.5 * vWorldDir.z);
         float halo = (exp(-above / 0.055) * 0.75 + exp(-above / 0.2) * 0.32) * front;

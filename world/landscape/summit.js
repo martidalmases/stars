@@ -1,27 +1,25 @@
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
-import { createNoise2D, mulberry32, smoothstep, clamp } from "../core/noise.js";
+import { createNoise2D, mulberry32, smoothstep } from "../core/noise.js";
 import { stylizedMaterial } from "../core/materials.js";
-import { groundHeight, groundSlope, campWeight, edgeRadius } from "./terrain.js";
+import { groundHeight, groundSlope, edgeRadius, RIDGE_AZ, UPPER_AZ } from "./terrain.js";
 import { LAYOUT, inClearZone } from "../bivac/layout.js";
-import { createCrackMesh } from "./cracks.js";
+import { generateSlabs } from "./slabs.js";
 
 // ------------------------------------------------------------------
-// Terra del cim
+// Terra del cim (sòl, sota les lloses i l'herba)
 // ------------------------------------------------------------------
 function createGround() {
   const nT = 220;
   const nR = 120;
   const maxR = 500;
   const patch = createNoise2D(31);
-  const patch2 = createNoise2D(37);
 
   const positions = [];
   const colors = [];
   const indices = [];
 
-  const stone = [0.25, 0.25, 0.265];
-  const darkStone = [0.17, 0.17, 0.185];
-  const soil = [0.12, 0.115, 0.1];
+  const soil = [0.12, 0.11, 0.085];
+  const scree = [0.2, 0.2, 0.21];
 
   for (let j = 0; j <= nR; j += 1) {
     const r = maxR * Math.pow(j / nR, 2.3);
@@ -29,20 +27,17 @@ function createGround() {
       const th = (i / nT) * Math.PI * 2;
       const x = Math.sin(th) * r;
       const z = -Math.cos(th) * r;
-      const y = groundHeight(x, z);
-      positions.push(x, y, z);
+      positions.push(x, groundHeight(x, z), z);
 
-      const p = patch(x * 0.3, z * 0.3) / 0.7;
-      const p2 = patch2(x * 1.1, z * 1.1) / 0.7;
+      // Als pendents forts, tartera (pedra solta) en lloc de sòl.
       const slope = groundSlope(x, z);
-      const c = [0, 0, 0];
-      for (let k = 0; k < 3; k += 1) {
-        let v = stone[k] + (darkStone[k] - stone[k]) * smoothstep(-0.3, 0.6, p);
-        // Una mica de terra fosca als replans, mai als pendents.
-        v += (soil[k] - v) * smoothstep(0.35, 0.8, p2) * (1 - smoothstep(0.2, 0.5, slope)) * 0.7;
-        c[k] = v;
-      }
-      colors.push(c[0], c[1], c[2]);
+      const p = patch(x * 0.3, z * 0.3) / 0.7;
+      const k = smoothstep(0.55, 1.1, slope + p * 0.2);
+      colors.push(
+        soil[0] + (scree[0] - soil[0]) * k,
+        soil[1] + (scree[1] - soil[1]) * k,
+        soil[2] + (scree[2] - soil[2]) * k
+      );
     }
   }
 
@@ -63,7 +58,7 @@ function createGround() {
   geo.setIndex(indices);
   geo.computeVertexNormals();
 
-  const mesh = new THREE.Mesh(geo, stylizedMaterial({ flat: true, vertexColors: true, rock: "ground" }));
+  const mesh = new THREE.Mesh(geo, stylizedMaterial({ vertexColors: true, rock: "ground" }));
   mesh.frustumCulled = false;
   return mesh;
 }
@@ -79,9 +74,9 @@ class RockBuilder {
     this.colors = [];
   }
 
-  add({ x, y, z, sx, sy, sz, rotY = 0, tilt = 0, color = null, roughness = 0.32, flatTop = false, cuts = 3 }) {
-    const base = new THREE.IcosahedronGeometry(1, 1);
-    // Talls plans aleatoris: donen cares netes, com roca partida.
+  // euler: rotació explícita [x, y, z] (si no, es fa servir tilt/rotY).
+  add({ x, y, z, sx, sy, sz, rotY = 0, tilt = 0, euler = null, color = null, roughness = 0.32, flatTop = false, cuts = 3, detail = 1 }) {
+    const base = new THREE.IcosahedronGeometry(1, detail);
     const planes = [];
     for (let c = 0; c < cuts; c += 1) {
       const n = new THREE.Vector3(this.rng() * 2 - 1, this.rng() * 1.2 - 0.2, this.rng() * 2 - 1).normalize();
@@ -90,15 +85,16 @@ class RockBuilder {
     const pos = base.attributes.position;
     const seed = this.rng() * 100;
     const v = new THREE.Vector3();
+    const rot = euler ? new THREE.Euler(euler[0], euler[1], euler[2], "YXZ") : new THREE.Euler(tilt, rotY, tilt * 0.6);
     const m = new THREE.Matrix4().compose(
       new THREE.Vector3(x, y, z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt, rotY, tilt * 0.6)),
+      new THREE.Quaternion().setFromEuler(rot),
       new THREE.Vector3(sx, sy, sz)
     );
 
-    const shade = 0.88 + this.rng() * 0.24;
-    const warm = this.rng() * 0.04;
-    const col = color || [0.27 * shade + warm, 0.27 * shade + warm * 0.6, 0.3 * shade];
+    const shade = 0.85 + this.rng() * 0.3;
+    const warm = (this.rng() - 0.4) * 0.03;
+    const col = color || [0.25 * shade + warm, 0.25 * shade + warm * 0.4, 0.265 * shade - warm * 0.3];
 
     for (let i = 0; i < pos.count; i += 1) {
       v.fromBufferAttribute(pos, i);
@@ -106,7 +102,6 @@ class RockBuilder {
         this.noise(v.x * 1.4 + seed, v.y * 1.4) / 0.7 +
         (this.noise(v.z * 1.4, v.x * 1.4 + seed) / 0.7) * 0.6;
       let d = 1 + roughness * n * 0.6;
-      // Base aplanada perquè les roques reposin a terra.
       if (v.y < -0.35) d *= 0.85;
       v.multiplyScalar(d);
       if (v.y < -0.45) v.y = -0.45; // base plana: reposa a terra
@@ -117,8 +112,7 @@ class RockBuilder {
       });
       v.applyMatrix4(m);
       this.positions.push(v.x, v.y, v.z);
-      const lichen = clamp(n * 0.5 + 0.2, 0, 1) * 0.05;
-      this.colors.push(col[0] - lichen * 0.3, col[1] + lichen * 0.2, col[2] - lichen);
+      this.colors.push(col[0], col[1], col[2]);
     }
     base.dispose();
   }
@@ -134,84 +128,135 @@ class RockBuilder {
   }
 }
 
-function addScatteredRocks(builder) {
+// Lloses inclinades (estrats) que surten de terra.
+function addSlabs(builder) {
+  generateSlabs().forEach((s) => {
+    builder.add({
+      x: s.x,
+      y: s.y,
+      z: s.z,
+      sx: s.length / 2,
+      sy: s.thick,
+      sz: s.width / 2,
+      euler: [s.dip, s.yaw, s.roll],
+      roughness: 0.2,
+      flatTop: true,
+      cuts: 3
+    });
+  });
+}
+
+// Pedretes soltes.
+function addPebbles(builder) {
   const rng = mulberry32(42);
   let placed = 0;
-
-  for (let attempt = 0; attempt < 400 && placed < 120; attempt += 1) {
+  for (let attempt = 0; attempt < 400 && placed < 90; attempt += 1) {
     const th = (rng() * 2 - 1) * Math.PI;
-    const R = edgeRadius(th);
-    const r = 1.4 + Math.pow(rng(), 0.75) * (R + 3);
+    const r = 0.9 + Math.pow(rng(), 0.7) * (edgeRadius(th) + 1);
     const x = Math.sin(th) * r;
     const z = -Math.cos(th) * r;
+    const s = 0.04 + Math.pow(rng(), 3) * 0.16;
+    if (inClearZone(x, z, s + 0.05)) continue;
+    builder.add({
+      x,
+      y: groundHeight(x, z) + s * 0.15,
+      z,
+      sx: s * (0.9 + rng() * 0.6),
+      sy: s * (0.5 + rng() * 0.3),
+      sz: s * (0.9 + rng() * 0.6),
+      rotY: rng() * 6,
+      detail: 0
+    });
+    placed += 1;
+  }
+}
 
-    const s = 0.05 + Math.pow(rng(), 3.2) * 0.6;
-    if (inClearZone(x, z, s + 0.1)) continue;
-    if (s > 0.12 && campWeight(x, z) < 0.6) continue;
-
-    const flat = 0.45 + rng() * 0.35;
+// Blocs grans a l'avantcim (esquerra) i algun a la dreta.
+function addOutcrops(builder) {
+  const rng = mulberry32(77);
+  const list = [
+    { th: -1.05, r: 5.6, s: 1.1 },
+    { th: -1.38, r: 6.4, s: 1.6 },
+    { th: -1.75, r: 5.6, s: 1.3 },
+    { th: -2.08, r: 5.0, s: 0.95 },
+    { th: 1.4, r: 4.9, s: 0.8 },
+    { th: 1.7, r: 5.5, s: 1.1 }
+  ];
+  list.forEach(({ th, r, s }) => {
+    const x = Math.sin(th) * r;
+    const z = -Math.cos(th) * r;
     builder.add({
       x,
       y: groundHeight(x, z) + s * 0.1,
       z,
-      sx: s * (0.9 + rng() * 0.6),
-      sy: s * flat,
-      sz: s * (0.9 + rng() * 0.6),
-      rotY: rng() * Math.PI * 2,
-      tilt: (rng() - 0.5) * 0.5
-    });
-    placed += 1;
-  }
-
-  // Blocs grans a les vores del cim per emmarcar la vista.
-  // Al costat esquerre (on puja l'avantcim) i algun a la dreta. Endavant no:
-  // la vista ha de quedar oberta.
-  const outcrops = [
-    { th: -0.78, r: 4.7, s: 0.75 },
-    { th: -1.02, r: 5.4, s: 1.25 },
-    { th: -1.38, r: 6.2, s: 1.7 },
-    { th: -1.72, r: 5.3, s: 1.35 },
-    { th: -2.05, r: 4.6, s: 1.0 },
-    { th: -1.25, r: 9.5, s: 2.2 },
-    { th: -1.6, r: 11.5, s: 2.6 },
-    { th: 1.32, r: 4.6, s: 0.8 },
-    { th: 1.62, r: 5.2, s: 1.15 }
-  ];
-  outcrops.forEach(({ th, r, s }) => {
-    const x = Math.sin(th) * r;
-    const z = -Math.cos(th) * r;
-    builder.add({
-      x,
-      y: groundHeight(x, z) + s * 0.05,
-      z,
-      sx: s * (1.1 + rng() * 0.4),
-      sy: s * (0.55 + rng() * 0.25),
-      sz: s * (0.9 + rng() * 0.4),
-      rotY: rng() * Math.PI,
-      tilt: (rng() - 0.5) * 0.35,
-      roughness: 0.4
-    });
-    // Una pedra petita al costat.
-    const a = rng() * Math.PI * 2;
-    const x2 = x + Math.cos(a) * s * 1.3;
-    const z2 = z + Math.sin(a) * s * 1.3;
-    builder.add({
-      x: x2,
-      y: groundHeight(x2, z2),
-      z: z2,
-      sx: s * 0.42,
-      sy: s * 0.3,
-      sz: s * 0.38,
-      rotY: rng() * 3
+      sx: s * (1.0 + rng() * 0.4),
+      sy: s * (0.6 + rng() * 0.3),
+      sz: s * (0.8 + rng() * 0.4),
+      euler: [(rng() - 0.5) * 0.3, rng() * Math.PI, 0.25 + rng() * 0.2],
+      roughness: 0.3,
+      cuts: 4
     });
   });
+
+  // Cresta de l'avantcim: blocs grans i torres que retallen el cel.
+  const up = [Math.sin((UPPER_AZ * Math.PI) / 180), -Math.cos((UPPER_AZ * Math.PI) / 180)];
+  const side = [-up[1], up[0]];
+  for (let i = 0; i < 9; i += 1) {
+    const a = 7 + i * 1.5 + rng();
+    const c = (rng() - 0.5) * 4;
+    const x = up[0] * a + side[0] * c;
+    const z = up[1] * a + side[1] * c;
+    const s = 0.9 + rng() * 1.4;
+    builder.add({
+      x,
+      y: groundHeight(x, z) + s * 0.2,
+      z,
+      sx: s * (0.7 + rng() * 0.5),
+      sy: s * (0.9 + rng() * 0.9),
+      sz: s * (0.6 + rng() * 0.4),
+      euler: [(rng() - 0.5) * 0.25, rng() * Math.PI, 0.3],
+      roughness: 0.35,
+      cuts: 4
+    });
+  }
+}
+
+// Gendarmes (torres de roca) al llarg de la carena: fan que es llegeixi la forma.
+function addRidgeTowers(builder) {
+  const rng = mulberry32(91);
+  const dir = [Math.sin((RIDGE_AZ * Math.PI) / 180), -Math.cos((RIDGE_AZ * Math.PI) / 180)];
+  let a = 9;
+  while (a < 260) {
+    const x = dir[0] * a;
+    const z = dir[1] * a;
+    // Busca el punt més alt de la carena a prop.
+    let best = { x, z, y: groundHeight(x, z) };
+    for (let k = -6; k <= 6; k += 1) {
+      const px = x + dir[1] * k * 1.2;
+      const pz = z - dir[0] * k * 1.2;
+      const py = groundHeight(px, pz);
+      if (py > best.y) best = { x: px, z: pz, y: py };
+    }
+    const scale = 1 + a * 0.02;
+    const h = (1.5 + rng() * 3.5) * scale;
+    builder.add({
+      x: best.x,
+      y: best.y + h * 0.3,
+      z: best.z,
+      sx: h * (0.35 + rng() * 0.25),
+      sy: h,
+      sz: h * (0.3 + rng() * 0.2),
+      euler: [(rng() - 0.5) * 0.3, rng() * Math.PI, (rng() - 0.5) * 0.3],
+      roughness: 0.4,
+      cuts: 4
+    });
+    a += (6 + rng() * 10) * scale;
+  }
 }
 
 function addFita(builder) {
   const { x, z } = LAYOUT.fita;
   const rng = mulberry32(7);
-  // Pedres amb base i cim plans, apilades exactament l'una sobre l'altra.
-  // Al model local, la base és a -0.45 i el cim a +0.55 (alçada = sy).
   let y = groundHeight(x, z) - 0.03;
   const radii = [0.4, 0.36, 0.31, 0.27, 0.23, 0.19, 0.15, 0.11];
   radii.forEach((r, i) => {
@@ -244,7 +289,7 @@ function addSlab(builder) {
     sy: 0.08,
     sz,
     rotY: 0.35,
-    roughness: 0.12,
+    roughness: 0.1,
     flatTop: true,
     cuts: 0
   });
@@ -261,11 +306,13 @@ export function createSummit() {
   group.add(createGround());
 
   const rocks = new RockBuilder(11);
-  addScatteredRocks(rocks);
+  addSlabs(rocks);
+  addPebbles(rocks);
+  addOutcrops(rocks);
+  addRidgeTowers(rocks);
   addFita(rocks);
   addSlab(rocks);
   group.add(rocks.build());
-  group.add(createCrackMesh());
 
   return group;
 }

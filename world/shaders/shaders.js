@@ -108,24 +108,35 @@ float voronoiEdge(vec2 x) {
   return sqrt(d2) - sqrt(d1);
 }
 
+// Roca: taques suaus, estrats (bandes segons l'alçada), venes fines i liquen.
 float rockPattern(vec2 p) {
-  float mottle = fbm3(p * 0.55);
-  float plates = smoothstep(0.0, 0.07, voronoiEdge(p * 1.6 + mottle * 0.8));
-  float fine = smoothstep(0.0, 0.05, voronoiEdge(p * 4.3 + 7.1));
-  float lichen = smoothstep(0.78, 0.86, vnoise(p * 9.0)) * 0.5;
-  float v = (0.72 + 0.5 * mottle) * mix(0.45, 1.0, plates) * mix(0.75, 1.0, fine);
-  return v + lichen * 0.18;
+  float mottle = fbm3(p * 0.9);
+  float grain = vnoise(p * 14.0);
+  float vein = smoothstep(0.0, 0.035, voronoiEdge(p * 2.2 + mottle * 1.5));
+  float lichen = smoothstep(0.7, 0.82, fbm3(p * 3.1 + 11.0));
+  float v = (0.78 + 0.42 * mottle) * (0.9 + 0.2 * grain) * mix(0.72, 1.0, vein);
+  return v * mix(1.0, 1.25, lichen);
 }
 
 vec3 rockAlbedo(vec3 base, vec3 p, vec3 n) {
 #ifdef ROCK_GROUND
-  float v = rockPattern(p.xz);
+  // Terra: sòl fosc amb grava i alguna taca de molsa.
+  float g = vnoise(p.xz * 18.0);
+  float pebbles = smoothstep(0.72, 0.8, g);
+  float moss = smoothstep(0.45, 0.7, fbm3(p.xz * 0.9 + 4.0));
+  vec3 soil = base * (0.8 + 0.35 * fbm3(p.xz * 2.5));
+  soil = mix(soil, base * vec3(0.85, 1.15, 0.75), moss * 0.6);
+  return mix(soil, vec3(0.2, 0.2, 0.21), pebbles * 0.5);
 #else
   vec3 w = pow(abs(n), vec3(4.0));
   w /= (w.x + w.y + w.z);
   float v = rockPattern(p.yz) * w.x + rockPattern(p.xz) * w.y + rockPattern(p.xy) * w.z;
+  // Estrats: bandes horitzontals suaus, una mica ondulades.
+  float strata = 0.5 + 0.5 * sin(p.y * 22.0 + fbm3(p.xz * 1.5) * 4.0);
+  v *= 0.9 + 0.12 * strata * (1.0 - w.y);
+  float lichenTint = smoothstep(0.75, 0.9, fbm3(p.xz * 2.7 + p.y * 1.3 + 7.0));
+  return mix(base * v, base * v * vec3(1.15, 1.18, 0.9), lichenTint * w.y);
 #endif
-  return base * v;
 }
 `;
 
@@ -180,6 +191,13 @@ void main() {
   albedo = rockAlbedo(albedo, vWorld, n);
 #endif
   vec3 col = shadeStylized(albedo, n, vWorld);
+#ifdef FABRIC
+  // Lluentor suau de la tela de niló a les vores.
+  float ndv = max(dot(n, normalize(cameraPosition - vWorld)), 0.0);
+  vec3 toLampF = uLanternPos - vWorld;
+  float lampF = uLanternIntensity / (1.0 + dot(toLampF, toLampF) * 1.15);
+  col += albedo * pow(1.0 - ndv, 2.2) * (uSkyAmbient * 3.0 + uLanternColor * lampF * 0.6);
+#endif
   col = applyHaze(col, vWorld);
   gl_FragColor = vec4(col, 1.0);
 }
@@ -269,10 +287,10 @@ void main() {
   float snowMask = vH + (n.y - 0.6) * 0.55 + (nz - 0.5) * 0.3;
   float snow = smoothstep(uSnowLine - 0.03, uSnowLine + 0.03, snowMask);
 
-  vec3 rockShadow = vec3(0.018, 0.022, 0.036);
-  vec3 rockLit = vec3(0.045, 0.052, 0.078);
-  vec3 snowShadow = vec3(0.065, 0.08, 0.125);
-  vec3 snowLit = vec3(0.2, 0.235, 0.32);
+  vec3 rockShadow = vec3(0.015, 0.018, 0.03);
+  vec3 rockLit = vec3(0.035, 0.041, 0.062);
+  vec3 snowShadow = vec3(0.05, 0.062, 0.098);
+  vec3 snowLit = vec3(0.14, 0.165, 0.23);
 
   vec3 rock = mix(rockShadow, rockLit, light) * (0.85 + 0.3 * nz);
   vec3 sn = mix(snowShadow, snowLit, light);
@@ -393,8 +411,9 @@ void main() {
   fragment: /* glsl */ `
 uniform vec3 uLanternColor;
 uniform float uLanternIntensity;
+uniform float uBoost;
 void main() {
-  vec3 col = uLanternColor * (0.75 + 0.35 * uLanternIntensity);
+  vec3 col = uLanternColor * (0.75 + 0.35 * uLanternIntensity) * uBoost + vec3(0.25) * max(uBoost - 1.0, 0.0);
   gl_FragColor = vec4(col, 1.0);
 }
 `

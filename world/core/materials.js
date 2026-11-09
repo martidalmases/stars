@@ -10,7 +10,8 @@ export function stylizedMaterial({
   color = [1, 1, 1],
   flat = false,
   vertexColors = false,
-  rock = null, // "ground" (textura vista des de dalt) o "block" (en tres direccions)
+  rock = null, // "ground" (terra) o "block" (roca, textura en tres direccions)
+  fabric = false, // lluentor de tela (sacs de dormir)
   side = THREE.FrontSide
 } = {}) {
   const defines = {};
@@ -18,6 +19,7 @@ export function stylizedMaterial({
   if (vertexColors) defines.USE_ACOLOR = "";
   if (rock === "ground") defines.ROCK_GROUND = "";
   if (rock === "block") defines.ROCK = "";
+  if (fabric) defines.FABRIC = "";
 
   return new THREE.ShaderMaterial({
     defines,

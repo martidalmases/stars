@@ -11,10 +11,10 @@ import { CLOUD_Y } from "./terrain.js";
 //   snowLine: on comença la neu (0 = base, 1 = cim)   fog: quanta boira agafa
 //   peaks: cims protagonistes (az en graus, amplada en graus, quant sobresurten)
 const LAYERS = [
-  { r0: 110, r1: 225, amp: 40, feature: 70, seed: 3, snowLine: 0.66, fog: 0.82, peaks: [{ az: -36, width: 5, boost: 0.6 }] },
-  { r0: 245, r1: 385, amp: 58, feature: 95, seed: 8, snowLine: 0.56, fog: 0.88, peaks: [{ az: 18, width: 4.5, boost: 0.7 }] },
-  { r0: 405, r1: 585, amp: 82, feature: 130, seed: 15, snowLine: 0.48, fog: 0.92, peaks: [{ az: -12, width: 4.5, boost: 0.85 }, { az: 74, width: 6, boost: 0.5 }] },
-  { r0: 605, r1: 870, amp: 118, feature: 170, seed: 21, snowLine: 0.42, fog: 0.95, peaks: [{ az: 50, width: 5.5, boost: 0.55 }, { az: -62, width: 7, boost: 0.5 }] }
+  { r0: 110, r1: 230, amp: 36, feature: 60, seed: 3, snowLine: 0.84, fog: 0.82, peaks: [] },
+  { r0: 250, r1: 395, amp: 52, feature: 85, seed: 8, snowLine: 0.76, fog: 0.88, peaks: [{ az: 18, width: 6, boost: 0.12 }] },
+  { r0: 415, r1: 600, amp: 75, feature: 115, seed: 15, snowLine: 0.7, fog: 0.92, peaks: [{ az: -12, width: 7, boost: 0.15 }] },
+  { r0: 620, r1: 880, amp: 105, feature: 150, seed: 21, snowLine: 0.64, fog: 0.95, peaks: [{ az: 50, width: 8, boost: 0.12 }] }
 ];
 
 const HALF_ARC = 3.0; // ±172°: no s'hi veu cap tall en girar el cap.
@@ -31,27 +31,32 @@ function buildLayer(L) {
   let max = 0;
 
   const warpNoise = createNoise2D(L.seed + 200);
+  const detailNoise = createNoise2D(L.seed + 300);
   for (let j = 0; j <= nR; j += 1) {
     const r = L.r0 + ((L.r1 - L.r0) * j) / nR;
-    const radial = Math.pow(Math.sin((Math.PI * j) / nR), 0.8);
+    const tj = j / nR;
+    // Cara davantera que s'aixeca del mar de núvols i esquena més suau.
+    const radial = smoothstep(0.0, 0.32, tj) * (1 - smoothstep(0.72, 1.0, tj));
     for (let i = 0; i <= nT; i += 1) {
       const th = -HALF_ARC + (2 * HALF_ARC * i) / nT;
       const s = th * rMid;
       const u = s / L.feature;
       const v = (r - L.r0) / L.feature + 3.1;
-      // Distorsió suau perquè les carenes no siguin rectes.
-      const wu = u + 0.45 * fbm(warpNoise, u * 0.7, v * 0.7, 2) / 0.7;
-      const wv = v + 0.45 * fbm(warpNoise, u * 0.7 + 9.2, v * 0.7, 2) / 0.7;
-      const massif = 0.22 + 0.78 * smoothstep(-0.35, 0.5, fbm(massifNoise, u * 0.35, 7.3, 3) / 0.7);
-      const rid = ridged(noise, wu, wv, 4);
-      let h = Math.pow(Math.max(0, rid * massif), 1.5);
+      const wu = u + 0.5 * fbm(warpNoise, u * 0.6, v * 0.6, 3) / 0.7;
+      const wv = v + 0.5 * fbm(warpNoise, u * 0.6 + 9.2, v * 0.6, 3) / 0.7;
+
+      // Massís continu (sense pics aïllats) + carenes i valls erosionades a sobre.
+      const mass = 0.55 + 0.45 * smoothstep(-0.5, 0.5, fbm(massifNoise, u * 0.22, 7.3, 3) / 0.7);
+      const rid = ridged(noise, wu, wv, 5);
+      const detail = fbm(detailNoise, u * 3.2, v * 3.2, 3) * 0.04;
+      let h = mass * (0.42 + 0.58 * rid) + detail;
 
       L.peaks.forEach(({ az, width, boost }) => {
         const d = (th - THREE.MathUtils.degToRad(az)) / THREE.MathUtils.degToRad(width);
-        h += boost * Math.exp(-Math.pow(Math.abs(d), 1.4)) * (0.55 + 0.45 * rid);
+        h += boost * Math.exp(-d * d);
       });
 
-      h *= radial;
+      h = Math.max(0, h) * radial;
       raw[j * (nT + 1) + i] = h;
       if (h > max) max = h;
     }
@@ -59,7 +64,7 @@ function buildLayer(L) {
 
   const positions = new Float32Array(count * 3);
   const heights = new Float32Array(count);
-  const base = CLOUD_Y - 30;
+  const base = CLOUD_Y - 15;
 
   for (let j = 0; j <= nR; j += 1) {
     const r = L.r0 + ((L.r1 - L.r0) * j) / nR;
@@ -68,7 +73,7 @@ function buildLayer(L) {
       const th = -HALF_ARC + (2 * HALF_ARC * i) / nT;
       const h01 = raw[idx] / max;
       positions[idx * 3] = Math.sin(th) * r;
-      positions[idx * 3 + 1] = base + h01 * (L.amp + 30);
+      positions[idx * 3 + 1] = base + h01 * (L.amp + 15);
       positions[idx * 3 + 2] = -Math.cos(th) * r;
       heights[idx] = h01;
     }

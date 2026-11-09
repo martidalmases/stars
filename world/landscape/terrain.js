@@ -7,8 +7,8 @@
 
 import { createNoise2D, fbm, smoothstep } from "../core/noise.js";
 
-// Estàs mig assegut dins el sac: els ulls (la càmera) són a 0, el terra a -0.85.
-export const GROUND_Y = -0.85;
+// Estàs estirat amb el cap aixecat: els ulls (la càmera) són a 0, el terra a -0.6.
+export const GROUND_Y = -0.6;
 export const CLOUD_Y = -40;
 
 const nBumps = createNoise2D(7);

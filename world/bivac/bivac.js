@@ -2,7 +2,7 @@ import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 import { stylizedMaterial } from "../core/materials.js";
 import { shared } from "../core/environment.js";
 import { EMISSIVE, GLOW } from "../shaders/shaders.js";
-import { smoothstep, clamp } from "../core/noise.js";
+import { smoothstep, clamp, createNoise2D } from "../core/noise.js";
 import { groundHeight } from "../landscape/terrain.js";
 import { slabTopY } from "../landscape/summit.js";
 import { LAYOUT } from "./layout.js";
@@ -18,12 +18,19 @@ const COLORS = {
 };
 
 // ------------------------------------------------------------------
-// Sac de dormir tipus "mòmia" amb farciment per franges.
-// El cap és a z = 0 i els peus cap a -z.
+// Sac de dormir tipus "mòmia" amb algú a dins. El cap és a z = 0 i els peus
+// cap a -z. La forma segueix un cos (espatlles, malucs, genolls, peus), la tela
+// té arrugues irregulars i costures suaus, i la part de baix s'aplana sobre
+// l'esterilla.
+//   body: { head, chest, hips, knees, feet, curl, side }
 // ------------------------------------------------------------------
-function sleepingBagGeometry({ length = 1.95, width = 0.33, height = 0.2, baffles = 12 } = {}) {
-  const nL = 110;
-  const nA = 36;
+const gauss = (t, c, s) => Math.exp(-((t - c) / s) * ((t - c) / s));
+
+function sleepingBagGeometry({ length = 1.95, width = 0.33, height = 0.17, body = {}, seed = 1 } = {}) {
+  const { head = 0, chest = 0.35, hips = 0.3, knees = 0.2, feet = 0.35, curl = 0, side = 0 } = body;
+  const noise = createNoise2D(seed);
+  const nL = 150;
+  const nA = 56;
   const positions = [];
   const indices = [];
 
@@ -31,23 +38,49 @@ function sleepingBagGeometry({ length = 1.95, width = 0.33, height = 0.2, baffle
     const t = i / nL;
     const z = -t * length;
 
-    const shoulder = smoothstep(0.0, 0.16, t);
-    let w = width * (0.68 + 0.32 * shoulder) * (1 - 0.42 * smoothstep(0.35, 1.0, t));
-    let h = height * (0.82 + 0.18 * shoulder) * (1 - 0.32 * smoothstep(0.5, 0.92, t));
-    h *= 1 + 0.3 * smoothstep(0.84, 0.95, t); // els peus aixequen el sac
+    let w = width * (0.62 + 0.38 * smoothstep(0.0, 0.16, t)) * (1 - 0.42 * smoothstep(0.42, 1.0, t));
+    w *= 1 + 0.1 * gauss(t, 0.47, 0.1) * hips + 0.06 * gauss(t, 0.2, 0.08);
+    let h =
+      height *
+      (0.55 + head * gauss(t, 0.05, 0.05) + chest * gauss(t, 0.2, 0.09) + hips * gauss(t, 0.46, 0.1) +
+        knees * gauss(t, 0.7, 0.07) + feet * gauss(t, 0.94, 0.035));
+    // Corba del cos (algú mig de costat amb els genolls una mica doblegats).
+    const xOff = curl * (0.06 * gauss(t, 0.68, 0.14) - 0.02 * gauss(t, 0.3, 0.15));
 
-    const startCap = Math.pow(Math.sin((Math.PI / 2) * clamp(t / 0.07, 0, 1)), 0.55);
-    const endCap = Math.pow(Math.sin((Math.PI / 2) * clamp((1 - t) / 0.06, 0, 1)), 0.55);
-    const baffle = 1 + 0.028 * Math.cos(2 * Math.PI * baffles * t) + 0.012 * Math.sin(2 * Math.PI * 3.3 * t + 1.0);
-    w *= startCap * endCap * baffle;
-    h *= startCap * endCap * baffle;
+    const startCap = Math.pow(Math.sin((Math.PI / 2) * clamp(t / 0.06, 0, 1)), 0.6);
+    const endCap = Math.pow(Math.sin((Math.PI / 2) * clamp((1 - t) / 0.05, 0, 1)), 0.5);
+    w *= startCap * endCap;
+    h *= startCap * endCap;
 
     for (let k = 0; k <= nA; k += 1) {
       const phi = (k / nA) * Math.PI * 2;
       const s = Math.sin(phi);
-      const x = w * Math.cos(phi);
-      const y = h * (s >= 0 ? s : s * 0.1) + h * 0.1 + 0.004;
-      positions.push(x, y, z);
+      const c = Math.cos(phi);
+      // Secció arrodonida a dalt i aplanada a baix (la tela s'escampa sobre l'esterilla).
+      let x = w * Math.sign(c) * Math.pow(Math.abs(c), 0.85);
+      let y;
+      if (s >= 0) {
+        y = h * Math.pow(s, 0.9);
+      } else {
+        y = h * s * 0.06;
+        x *= 1 + 0.12 * Math.min(1, -s * 3);
+      }
+      // El costat on recolza el cos és més ple.
+      y *= 1 + side * c * 0.15 * Math.max(s, 0);
+
+      if (s > -0.2) {
+        // Costures dels compartiments: solcs suaus, no corrugat.
+        const zz = t * length / 0.19;
+        const seam = Math.min(zz % 1, 1 - (zz % 1));
+        const groove = Math.exp(-(seam / 0.09) * (seam / 0.09)) * 0.012 * Math.max(s, 0);
+        // Arrugues irregulars de la tela, més fortes a les zones flexionades.
+        const flex = 0.6 + gauss(t, 0.3, 0.12) + gauss(t, 0.62, 0.1) * 1.3;
+        const wr = noise(t * length * 5.0, phi * 1.6) * 0.011 * flex + noise(t * length * 13.0, phi * 4.0) * 0.004;
+        const bulge = 1 + (wr - groove) / Math.max(h, 0.05);
+        y = y * bulge;
+        x = x * (1 + wr * 0.6);
+      }
+      positions.push(x + xOff, y + 0.004, z);
     }
   }
 
@@ -128,20 +161,26 @@ function createMat({ x, z, width, length, rot }, color) {
   return mesh;
 }
 
-function createBag({ x, zHead, length, rot }, color, { closedHood = false } = {}) {
+function createBag({ x, zHead, length, rot }, color, { sleeper = false } = {}) {
   const group = new THREE.Group();
-  const bag = new THREE.Mesh(sleepingBagGeometry({ length }), stylizedMaterial({ color }));
+  const body = sleeper
+    ? { head: 0.55, chest: 0.5, hips: 0.55, knees: 0.4, feet: 0.4, curl: 1, side: 0.8 }
+    : { head: 0, chest: 0.35, hips: 0.32, knees: 0.25, feet: 0.45, curl: 0.3, side: 0 };
+  const bag = new THREE.Mesh(
+    sleepingBagGeometry({ length, body, seed: sleeper ? 3 : 8 }),
+    stylizedMaterial({ color, fabric: true })
+  );
   group.add(bag);
 
-  if (closedHood) {
+  if (sleeper) {
     // Caputxa tancada amb el cordó estirat: algú dorm arraulit a dins.
-    const dark = stylizedMaterial({ color: color.map((c) => c * 0.45) });
-    const pucker = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), dark);
-    pucker.scale.set(1.25, 0.9, 0.45);
-    pucker.position.set(0, 0.12, 0.02);
+    const dark = stylizedMaterial({ color: color.map((c) => c * 0.4), fabric: true });
+    const pucker = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 12), dark);
+    pucker.scale.set(1.2, 0.85, 0.4);
+    pucker.position.set(0, 0.1, 0.018);
     group.add(pucker);
-    const toggle = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.02, 3, 6), stylizedMaterial({ color: COLORS.strap }));
-    toggle.position.set(0.05, 0.075, 0.06);
+    const toggle = new THREE.Mesh(new THREE.CapsuleGeometry(0.007, 0.02, 3, 6), stylizedMaterial({ color: COLORS.strap }));
+    toggle.position.set(0.05, 0.06, 0.05);
     toggle.rotation.z = 0.4;
     group.add(toggle);
   }
@@ -150,6 +189,7 @@ function createBag({ x, zHead, length, rot }, color, { closedHood = false } = {}
   group.rotation.y = rot;
   return group;
 }
+
 
 // Motxilla de muntanya. Local: l'esquena mira a -z, la butxaca davantera a +z,
 // la base a y = 0.
@@ -246,42 +286,68 @@ function createPole(from, to) {
   return group;
 }
 
+// Fanal de tempesta clàssic: dipòsit, globus de vidre amb reixeta, xemeneia,
+// tubs laterals i nansa. Dins hi ha una flameta.
 function createLantern() {
   const group = new THREE.Group();
-  const metal = stylizedMaterial({ color: [0.2, 0.2, 0.22] });
+  const enamel = stylizedMaterial({ color: [0.32, 0.07, 0.05] });
+  const metal = stylizedMaterial({ color: [0.16, 0.16, 0.17] });
+  const lathe = (pts, mat, segs = 28) =>
+    new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segs), mat);
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.052, 0.025, 16), metal);
-  base.position.y = 0.0125;
-  group.add(base);
+  // Dipòsit de combustible.
+  group.add(lathe([[0, 0], [0.058, 0], [0.066, 0.008], [0.07, 0.024], [0.066, 0.04], [0.05, 0.05], [0.032, 0.054], [0, 0.054]], enamel));
 
+  // Globus de vidre (encès) i flama.
   const glassMat = new THREE.ShaderMaterial({
-    uniforms: { ...shared },
+    uniforms: { ...shared, uBoost: { value: 0.75 } },
     vertexShader: EMISSIVE.vertex,
     fragmentShader: EMISSIVE.fragment
   });
-  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.085, 16), glassMat);
-  glass.position.y = 0.068;
-  group.add(glass);
+  group.add(lathe([[0.026, 0.054], [0.04, 0.066], [0.047, 0.088], [0.045, 0.108], [0.036, 0.124], [0.026, 0.13]], glassMat));
+  const flameMat = new THREE.ShaderMaterial({
+    uniforms: { ...shared, uBoost: { value: 1.6 } },
+    vertexShader: EMISSIVE.vertex,
+    fragmentShader: EMISSIVE.fragment
+  });
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), flameMat);
+  flame.scale.set(1, 2.2, 1);
+  flame.position.y = 0.083;
+  group.add(flame);
 
-  [0, 1, 2, 3].forEach((i) => {
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.09, 0.006), metal);
-    const a = (i / 4) * Math.PI * 2 + 0.4;
-    bar.position.set(Math.cos(a) * 0.04, 0.068, Math.sin(a) * 0.04);
-    group.add(bar);
+  // Reixeta de protecció.
+  for (let i = 0; i < 5; i += 1) {
+    const a = (i / 5) * Math.PI * 2 + 0.3;
+    const pts = [
+      [0.03, 0.054], [0.046, 0.068], [0.053, 0.09], [0.051, 0.11], [0.04, 0.128]
+    ].map(([r, y]) => new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r));
+    group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.0018, 4, false), metal));
+  }
+
+  // Xemeneia i barret.
+  group.add(lathe([[0.024, 0.128], [0.05, 0.136], [0.054, 0.144], [0.04, 0.152], [0.02, 0.158], [0.02, 0.176], [0.03, 0.18], [0.03, 0.186], [0, 0.19]], enamel));
+
+  // Tubs laterals (porten l'aire de dalt al cremador).
+  [-1, 1].forEach((sideSign) => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(sideSign * 0.06, 0.035, 0),
+      new THREE.Vector3(sideSign * 0.066, 0.09, 0),
+      new THREE.Vector3(sideSign * 0.058, 0.14, 0),
+      new THREE.Vector3(sideSign * 0.04, 0.152, 0)
+    ]);
+    group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.006, 8, false), enamel));
   });
 
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.035, 16), metal);
-  cap.position.y = 0.128;
-  group.add(cap);
-
-  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.004, 6, 20, Math.PI), metal);
-  handle.position.y = 0.145;
-  group.add(handle);
+  // Nansa de filferro.
+  const bail = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.0022, 6, 28, Math.PI), metal);
+  bail.position.y = 0.15;
+  bail.rotation.y = 0.5;
+  group.add(bail);
 
   const glow = new THREE.Mesh(
     new THREE.PlaneGeometry(0.9, 0.9),
     new THREE.ShaderMaterial({
-      uniforms: { ...shared, uStrength: { value: 0.55 } },
+      uniforms: { ...shared, uStrength: { value: 0.45 } },
       vertexShader: GLOW.vertex,
       fragmentShader: GLOW.fragment,
       transparent: true,
@@ -289,10 +355,10 @@ function createLantern() {
       blending: THREE.AdditiveBlending
     })
   );
-  glow.position.y = 0.07;
+  glow.position.y = 0.088;
   group.add(glow);
 
-  return { group, glow, lightOffset: 0.07 };
+  return { group, glow, lightOffset: 0.09 };
 }
 
 function createCup(color) {
@@ -329,7 +395,7 @@ export function createBivac() {
   group.add(createMat(LAYOUT.ownMat, COLORS.ownMat));
   group.add(createMat(LAYOUT.partnerMat, COLORS.partnerMat));
   group.add(createBag(LAYOUT.ownBag, COLORS.ownBag));
-  group.add(createBag(LAYOUT.partnerBag, COLORS.partnerBag, { closedHood: true }));
+  group.add(createBag(LAYOUT.partnerBag, COLORS.partnerBag, { sleeper: true }));
 
   // Dues motxilles estirades d'esquena a terra.
   function lyingPack({ x, z, color }, yaw) {
