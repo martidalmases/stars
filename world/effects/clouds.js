@@ -14,9 +14,9 @@ export function createCloudSea() {
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       ...shared,
-      uCloudAmp: { value: 14 },
-      uCloudLit: { value: new THREE.Vector3(0.075, 0.09, 0.13) },
-      uCloudShadow: { value: new THREE.Vector3(0.025, 0.031, 0.048) }
+      uCloudAmp: { value: 24 },
+      uCloudLit: { value: new THREE.Vector3(0.15, 0.175, 0.24) },
+      uCloudShadow: { value: new THREE.Vector3(0.03, 0.037, 0.056) }
     },
     vertexShader: CLOUD_SEA.vertex,
     fragmentShader: CLOUD_SEA.fragment

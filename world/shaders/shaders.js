@@ -62,8 +62,8 @@ vec3 shadeStylized(vec3 albedo, vec3 n, vec3 wp) {
 
   vec3 toLamp = uLanternPos - wp;
   float d = length(toLamp);
-  float att = uLanternIntensity / (1.0 + d * d * 1.15);
-  att *= 1.0 - smoothstep(3.5, 7.0, d);
+  float att = uLanternIntensity / (1.0 + d * d * 0.55);
+  att *= 1.0 - smoothstep(5.0, 11.0, d);
   float facing = dot(n, toLamp / max(d, 0.0001));
   float wrap = smoothstep(-0.2, 0.25, facing) * 0.8 + 0.2;
   vec3 lamp = uLanternColor * att * wrap;
@@ -220,7 +220,7 @@ void main() {
   // Lluentor suau de la tela de niló a les vores.
   float ndv = max(dot(n, normalize(cameraPosition - vWorld)), 0.0);
   vec3 toLampF = uLanternPos - vWorld;
-  float lampF = uLanternIntensity / (1.0 + dot(toLampF, toLampF) * 1.15);
+  float lampF = uLanternIntensity / (1.0 + dot(toLampF, toLampF) * 0.55);
   col += albedo * pow(1.0 - ndv, 2.2) * (uSkyAmbient * 3.0 + uLanternColor * lampF * 0.6);
 #endif
   col = applyHaze(col, vWorld);
@@ -367,8 +367,8 @@ void main() {
   vWorld = wp.xyz;
   float h = cloudField(wp.xz);
   float h2 = cloudField(wp.xz + normalize(uMoonDir.xz) * 7.0);
-  vShade = smoothstep(0.35, 0.75, 0.55 + (h - h2) * 7.5);
-  vPuff = smoothstep(0.3, 0.72, h);
+  vShade = smoothstep(0.3, 0.8, 0.55 + (h - h2) * 9.0);
+  vPuff = smoothstep(0.35, 0.68, h);
   wp.y += (h - 0.45) * uCloudAmp;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
@@ -389,8 +389,8 @@ void main() {
   vec3 col = mix(uCloudShadow, uCloudLit, k);
 
   float dist = length(vWorld - cameraPosition);
-  float f = 1.0 - exp(-dist / 380.0);
-  col = mix(col, uHazeColor, f * 0.9);
+  float f = 1.0 - exp(-dist / 650.0);
+  col = mix(col, uHazeColor, f * 0.7);
   gl_FragColor = vec4(col, 1.0);
 }
 `

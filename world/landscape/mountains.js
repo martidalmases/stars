@@ -32,11 +32,11 @@ function buildLayer(L) {
 
   const warpNoise = createNoise2D(L.seed + 200);
   const detailNoise = createNoise2D(L.seed + 300);
+  const spurNoise = createNoise2D(L.seed + 400);
+  const valleyNoise = createNoise2D(L.seed + 500);
   for (let j = 0; j <= nR; j += 1) {
     const r = L.r0 + ((L.r1 - L.r0) * j) / nR;
     const tj = j / nR;
-    // Cara davantera que s'aixeca del mar de núvols i esquena més suau.
-    const radial = smoothstep(0.0, 0.32, tj) * (1 - smoothstep(0.72, 1.0, tj));
     for (let i = 0; i <= nT; i += 1) {
       const th = -HALF_ARC + (2 * HALF_ARC * i) / nT;
       const s = th * rMid;
@@ -45,11 +45,19 @@ function buildLayer(L) {
       const wu = u + 0.5 * fbm(warpNoise, u * 0.6, v * 0.6, 3) / 0.7;
       const wv = v + 0.5 * fbm(warpNoise, u * 0.6 + 9.2, v * 0.6, 3) / 0.7;
 
-      // Massís continu (sense pics aïllats) + carenes i valls erosionades a sobre.
+      // Valls senceres que entren dins la serralada des de davant, i entre elles
+      // carenes (esperons) que baixen cap a on ets.
+      const valley = smoothstep(-0.25, 0.35, fbm(valleyNoise, s / (L.feature * 1.7), 0.5, 2) / 0.7);
+      const front = 0.42 * (1 - valley);
+      const radial = smoothstep(front, front + 0.45, tj) * (1 - smoothstep(0.75, 1.0, tj));
+
       const mass = 0.55 + 0.45 * smoothstep(-0.5, 0.5, fbm(massifNoise, u * 0.22, 7.3, 3) / 0.7);
       const rid = ridged(noise, wu, wv, 5);
+      // Carenes allargades en direcció radial (esperons i valls perpendiculars).
+      const spur = ridged(spurNoise, s / (L.feature * 0.55) + wu * 0.3, r / (L.feature * 2.6), 4);
       const detail = fbm(detailNoise, u * 3.2, v * 3.2, 3) * 0.04;
-      let h = mass * (0.42 + 0.58 * rid) + detail;
+      let h = mass * (0.42 + 0.58 * (rid * 0.45 + spur * 0.55)) + detail;
+      h *= 0.45 + 0.55 * valley + 0.45 * (1 - valley) * tj;
 
       L.peaks.forEach(({ az, width, boost }) => {
         const d = (th - THREE.MathUtils.degToRad(az)) / THREE.MathUtils.degToRad(width);

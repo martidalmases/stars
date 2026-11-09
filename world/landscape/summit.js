@@ -205,9 +205,15 @@ function createPavement() {
     const gz = (groundHeight(cx, cz + e) - groundHeight(cx, cz - e)) / (2 * e);
     const slope = Math.hypot(gx, gz);
     const follow = slope > 0.35 ? 0.35 : 0.85;
-    const top = b.ground + 0.05 + rng() * 0.12 + slope * 0.25;
-    const tx = gx * follow + (rng() - 0.5) * 0.08;
-    const tz = gz * follow + (rng() - 0.5) * 0.08;
+    let top = b.ground + 0.05 + rng() * 0.12 + slope * 0.25;
+    let tx = gx * follow + (rng() - 0.5) * 0.08;
+    let tz = gz * follow + (rng() - 0.5) * 0.08;
+    if (b.flush) {
+      // Sota el bivac: enrasats i plans, per sota de les esterilles.
+      top = b.ground - 0.025 - rng() * 0.02;
+      tx = 0;
+      tz = 0;
+    }
     const planeY = (x, z) => top + (x - cx) * tx + (z - cz) * tz;
 
     const shrink = (poly, d) =>

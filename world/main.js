@@ -17,7 +17,7 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.7";
+const SCENE_VERSION = "0.8";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 

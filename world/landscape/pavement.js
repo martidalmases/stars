@@ -100,10 +100,12 @@ export function generatePavement() {
 
       const ground = groundHeight(cx, cz);
       if (ground < GROUND_Y - 8) continue;
-      if (world.some(([x, z]) => inClearZone(x, z, 0.04))) continue;
+      // Sota el bivac els blocs queden enrasats amb el terra (les esterilles hi
+      // reposen a sobre); no se'n treu cap.
+      const flush = world.some(([x, z]) => inClearZone(x, z, 0.05));
 
-      const pit = rng() < 0.07; // forat de terra (sense bloc): hi creixen plantes
-      blocks.push({ poly: world, cx, cz, ground, pit, seed: Math.floor(rng() * 1e6) });
+      const pit = !flush && rng() < 0.07; // forat de terra (sense bloc): hi creixen plantes
+      blocks.push({ poly: world, cx, cz, ground, pit, flush, seed: Math.floor(rng() * 1e6) });
     }
   }
 
