@@ -12,7 +12,7 @@ const COLORS = {
   ownBag: [0.1, 0.2, 0.34],
   partnerBag: [0.16, 0.27, 0.13],
   ownMat: [0.55, 0.42, 0.14],
-  partnerMat: [0.2, 0.32, 0.22],
+  partnerMat: [0.55, 0.42, 0.14],
   strap: [0.08, 0.08, 0.09],
   metal: [0.3, 0.31, 0.34],
   thermos: [0.18, 0.3, 0.24]
@@ -411,7 +411,7 @@ export function createBivac() {
     return pack;
   }
   lyingPack(LAYOUT.packA, 0.35);
-  lyingPack(LAYOUT.packB, 2.3);
+  lyingPack(LAYOUT.packB, LAYOUT.packB.yaw ?? 0);
 
   // Bastons estirats a terra al costat de la motxilla.
   const ax = LAYOUT.packA.x;

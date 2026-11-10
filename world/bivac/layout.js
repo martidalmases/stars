@@ -20,7 +20,8 @@ export const LAYOUT = {
   thermos: { x: -0.56, z: -1.4 },
 
   packA: { x: -0.84, z: -0.22, color: [0.62, 0.3, 0.1] },
-  packB: { x: 1.52, z: -1.58, color: [0.2, 0.28, 0.42] },
+  // Estirada al costat del sac verd, paral·lela, sense tocar-lo.
+  packB: { x: 1.62, z: -1.75, yaw: -0.08, color: [0.2, 0.28, 0.42] },
 
   // Fita de pedres del cim, al peu de l'avantcim.
   fita: { x: -2.6, z: -2.3 }
@@ -32,7 +33,7 @@ export const CLEAR_ZONES = [
   [-0.12, 1.0, -2.55, -1.85],
   [-0.85, -0.3, -1.7, -1.1],
   [-1.45, -0.45, -1.1, 0.35],
-  [1.2, 1.85, -1.9, -1.25],
+  [1.3, 1.95, -2.5, -1.35],
   [-3.05, -2.15, -2.75, -1.85]
 ];
 

@@ -356,6 +356,11 @@
     }
 
     function initNoButtonMotion() {
+      // Només quan la pregunta es veu: si no, les mides són zero i el botó
+      // començaria desplaçat. Es mesura des de la posició original del CSS.
+      if (!questionReady) return;
+      noBtn.style.left = "";
+      noBtn.style.top = "";
       const areaRect = buttonArea.getBoundingClientRect();
       const noRect = noBtn.getBoundingClientRect();
       const startX = noRect.left - areaRect.left + noRect.width / 2;

@@ -341,10 +341,25 @@ void main() {
 const CLOUD_FIELD = /* glsl */ `
 uniform float uTime;
 ${NOISE}
+// Soroll "billow": bonys arrodonits com coliflors, que és el que fa que es
+// llegeixin com a núvols i no com a terreny.
+float billow(vec2 p) {
+  float s = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
+    s += a * (1.0 - abs(vnoise(p) * 2.0 - 1.0));
+    p = p * 2.03 + vec2(13.7, 7.9);
+    a *= 0.5;
+  }
+  return s / 0.9375;
+}
 float cloudField(vec2 p) {
-  vec2 q = p * 0.0042 + vec2(uTime * 0.0016, uTime * 0.0007);
-  vec2 warp = vec2(fbm3(q * 1.3 + 3.1), fbm3(q * 1.3 - 1.7));
-  return fbm5(q + warp * 0.95 + vec2(uTime * 0.0008, 0.0));
+  // Es desplacen prou de pressa perquè es noti que es mouen.
+  vec2 q = p * 0.0042 + vec2(uTime * 0.0045, uTime * 0.0018);
+  vec2 warp = vec2(fbm3(q * 1.3 + 3.1 - uTime * 0.002), fbm3(q * 1.3 - 1.7));
+  float big = fbm3(q * 0.8 + warp * 0.6);
+  float puffs = billow(q * 2.2 + warp * 0.9);
+  return big * 0.55 + puffs * 0.45;
 }
 `;
 
@@ -381,8 +396,10 @@ varying float vShade;
 varying float vPuff;
 
 void main() {
-  float detail = vnoise(vWorld.xz * 0.05 + vec2(uTime * 0.01, 0.0)) - 0.5;
-  float k = clamp(vShade * 0.6 + vPuff * 0.4 + detail * 0.2, 0.0, 1.0);
+  // Petits bonys a sobre dels grans (detall de coliflor), també en moviment.
+  vec2 dp = vWorld.xz * 0.045 + vec2(uTime * 0.03, uTime * 0.012);
+  float detail = (1.0 - abs(vnoise(dp) * 2.0 - 1.0)) * 0.6 + (1.0 - abs(vnoise(dp * 2.3 + 5.0) * 2.0 - 1.0)) * 0.4 - 0.55;
+  float k = clamp(vShade * 0.6 + vPuff * 0.4 + detail * 0.3, 0.0, 1.0);
   // Corba de contrast: els caps dels núvols es separen clarament de les valls.
   k = smoothstep(0.1, 0.9, k);
   vec3 col = mix(uCloudShadow, uCloudLit, k);

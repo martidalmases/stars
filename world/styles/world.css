@@ -152,13 +152,26 @@
   left: 14px;
   right: 14px;
   bottom: 58px;
+  overflow: hidden;
   pointer-events: none;
-  background:
-    linear-gradient(118deg, rgba(255, 255, 255, 0) 30%, rgba(255, 245, 225, 0.16) 42%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 62%),
-    radial-gradient(ellipse 70% 55% at 100% 100%, rgba(255, 200, 140, 0.22), rgba(255, 200, 140, 0) 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 25%);
   mix-blend-mode: screen;
+  /* Lluentor càlida a la cantonada que mira el fanal: puja i baixa amb la flama. */
+  background:
+    radial-gradient(ellipse 75% 60% at 100% 100%, rgba(255, 170, 90, 0.3), rgba(255, 170, 90, 0) 70%),
+    linear-gradient(180deg, rgba(255, 230, 200, 0.06), rgba(255, 230, 200, 0) 25%);
+  opacity: calc(0.35 + (var(--flame, 1.25) - 1.0) * 1.6);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), inset 0 0 14px rgba(0, 0, 0, 0.25);
+}
+
+/* Reflex de la flama al brillant: una franja càlida que es desplaça una mica
+   quan la flama tremola (només transform: no costa gairebé res). */
+.story-overlay__gloss::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(118deg, rgba(255, 200, 140, 0) 34%, rgba(255, 205, 150, 0.22) 44%, rgba(255, 220, 180, 0.06) 50%, rgba(255, 200, 140, 0) 60%);
+  transform: translate(calc((var(--flame, 1.25) - 1.25) * 60px), calc((1.25 - var(--flame, 1.25)) * 30px));
+  will-change: transform;
 }
 
 .story-overlay__caption {
