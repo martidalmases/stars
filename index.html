@@ -72,12 +72,27 @@
       text-transform: uppercase;
     }
 
+    /* Punts animats només amb CSS (opacitat): continuen movent-se encara que
+       el navegador estigui ocupat construint l'escena. */
     #charging-points {
       margin: 0;
-      min-width: 7ch;
-      text-align: left;
       font-size: 1.15rem;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.3em;
+    }
+
+    #charging-points span {
+      display: inline-block;
+      opacity: 0.15;
+      animation: charging-dot 1.4s ease-in-out infinite;
+      will-change: opacity;
+    }
+
+    #charging-points span:nth-child(2) { animation-delay: 0.2s; }
+    #charging-points span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes charging-dot {
+      0%, 100% { opacity: 0.15; }
+      40% { opacity: 1; }
     }
 
     .question {
@@ -178,12 +193,12 @@
 
   <main id="mini-game">
     <section class="paper">
-      <div id="loading-gate" class="is-hidden" aria-live="polite">
+      <div id="loading-gate" aria-live="polite">
         <p class="charging-title">charging memories</p>
-        <p id="charging-points">.</p>
+        <p id="charging-points" aria-hidden="true"><span>.</span><span>.</span><span>.</span></p>
       </div>
-      <div id="question-wrap" class="question-wrap">
-        <h1 class="question">qui té millor cul?</h1>
+      <div id="question-wrap" class="question-wrap is-hidden">
+        <h1 class="question">qui estima més a l'altre?</h1>
         <div class="button-area" id="button-area">
           <button id="yes-btn" class="btn" type="button">MARTÍ</button>
           <button id="no-btn" class="btn" type="button">LAURA</button>
@@ -285,6 +300,7 @@
     }
 
     function startChargingPoints() {
+      return; // ara els punts s'animen amb CSS
       const frames = [".", "..", "...", "...."];
       let index = 0;
       chargingPoints.textContent = frames[0];
@@ -397,12 +413,15 @@
       if (event.data && event.data.sceneReady) {
         worldLoaded = true;
         resolveWorld();
+        // L'escena ja és a punt: ara sí, la pregunta (i ja no es penjarà res).
+        revealQuestion();
+        initNoButtonMotion();
       }
     });
     window.addEventListener("load", () => {
       setTimeout(() => {
         sceneFrame.src = "world/world.html";
-      }, 400);
+      }, 150);
     });
 
     initNoButtonMotion();
@@ -444,6 +463,8 @@
         captureSceneCursor();
       }
 
+      // Desperta l'escena (mentre era amagada no es dibuixava).
+      sceneFrame.contentWindow?.postMessage({ sceneActive: true }, "*");
       message.textContent = "";
 
       await new Promise((resolve) => setTimeout(resolve, 520));

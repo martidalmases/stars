@@ -28,13 +28,20 @@ export const shared = {
   uCloudColor: { value: v3(0.046, 0.057, 0.086) }
 };
 
+let flame = 1.25;
+let flameTarget = 1.25;
+
 export function updateEnvironment(t) {
   shared.uTime.value = t;
 
   // Ràfegues suaus de vent.
   shared.uWind.value = 0.8 + 0.3 * Math.sin(t * 0.21) + 0.18 * Math.sin(t * 0.53 + 1.3);
 
-  // Parpelleig del fanalet.
-  shared.uLanternIntensity.value =
-    1.25 + 0.06 * Math.sin(t * 11.0) + 0.04 * Math.sin(t * 23.7 + 0.4) + 0.03 * Math.sin(t * 5.3);
+  // Parpelleig del fanal: una flama no és regular. Passeig aleatori suau
+  // + petites espurnes de tant en tant.
+  flameTarget += (Math.random() - 0.5) * 0.08;
+  flameTarget += (1.25 - flameTarget) * 0.04;
+  if (Math.random() < 0.012) flameTarget -= 0.12 + Math.random() * 0.1;
+  flame += (flameTarget - flame) * 0.18;
+  shared.uLanternIntensity.value = flame + 0.015 * Math.sin(t * 23.7);
 }

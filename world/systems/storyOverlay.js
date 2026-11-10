@@ -82,17 +82,18 @@ export class StoryOverlay {
     this._turnTo(Math.min(furthestUnlocked, this.currentIndex + 1));
   }
 
-  // Passa la pàgina: el contingut canvia a mig gir.
+  // Passa la pàgina: el contingut s'esvaeix, canvia i torna a aparèixer.
   _turnTo(index) {
-    if (index === this.currentIndex) return;
-    this.card.classList.remove("is-turning");
-    void this.card.offsetWidth;
-    this.card.classList.add("is-turning");
+    if (index === this.currentIndex || this.turning) return;
+    this.turning = true;
+    const dir = index > this.currentIndex ? "turn-next" : "turn-prev";
+    this.card.classList.add("is-turning", dir);
     window.setTimeout(() => {
       this.currentIndex = index;
       this._renderCurrent();
-    }, 250);
-    window.setTimeout(() => this.card.classList.remove("is-turning"), 540);
+      this.card.classList.remove("is-turning", dir);
+      this.turning = false;
+    }, 270);
   }
 
   _renderCurrent() {
@@ -117,12 +118,27 @@ export class StoryOverlay {
     }
   }
 
+  // Totes les fotos ocupen més o menys la mateixa superfície, sigui quin sigui
+  // el format (vertical, horitzontal o quadrat), i queden centrades.
   _syncCardOrientation() {
     if (!this.image || !this.card) return;
+    const w0 = this.image.naturalWidth;
+    const h0 = this.image.naturalHeight;
+    if (!w0 || !h0) return;
 
-    const isPortrait = this.image.naturalHeight > this.image.naturalWidth;
-    this.card.classList.toggle("story-overlay__card--portrait", isPortrait);
-    this.card.classList.toggle("story-overlay__card--landscape", !isPortrait);
+    const aspect = Math.min(2.0, Math.max(0.55, w0 / h0));
+    const area = Math.min(330 * 330, (window.innerHeight * 0.42) ** 2);
+    let w = Math.sqrt(area * aspect);
+    let h = Math.sqrt(area / aspect);
+    // Amplada de la columna de la foto (el full té 116 px de marges i 34 d'espai).
+    const colW = Math.min(420, (this.card.clientWidth - 150) * 0.5);
+    const maxW = Math.max(160, colW - 34);
+    const maxH = Math.min(420, window.innerHeight - 280);
+    const k = Math.min(1, maxW / w, maxH / h);
+    w *= k;
+    h *= k;
+    this.image.style.width = `${Math.round(w)}px`;
+    this.image.style.height = `${Math.round(h)}px`;
   }
 
   async _loadSlides() {
@@ -155,6 +171,7 @@ export class StoryOverlay {
       <section class="story-overlay__card" role="dialog" aria-modal="true" aria-label="Record">
         <figure class="story-overlay__media-wrap">
           <img class="story-overlay__media" src="" alt="" />
+          <span class="story-overlay__gloss" aria-hidden="true"></span>
           <figcaption class="story-overlay__caption"></figcaption>
         </figure>
         <div class="story-overlay__content">

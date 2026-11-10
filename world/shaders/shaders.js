@@ -382,12 +382,14 @@ varying float vPuff;
 
 void main() {
   float detail = vnoise(vWorld.xz * 0.05 + vec2(uTime * 0.01, 0.0)) - 0.5;
-  float k = clamp(vShade * 0.65 + vPuff * 0.35 + detail * 0.18, 0.0, 1.0);
+  float k = clamp(vShade * 0.6 + vPuff * 0.4 + detail * 0.2, 0.0, 1.0);
+  // Corba de contrast: els caps dels núvols es separen clarament de les valls.
+  k = smoothstep(0.1, 0.9, k);
   vec3 col = mix(uCloudShadow, uCloudLit, k);
 
   float dist = length(vWorld - cameraPosition);
-  float f = 1.0 - exp(-dist / 650.0);
-  col = mix(col, uHazeColor, f * 0.7);
+  float f = 1.0 - exp(-dist / 900.0);
+  col = mix(col, uHazeColor, f * 0.55);
   gl_FragColor = vec4(col, 1.0);
 }
 `

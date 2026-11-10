@@ -15,8 +15,8 @@ export function createCloudSea() {
     uniforms: {
       ...shared,
       uCloudAmp: { value: 36 },
-      uCloudLit: { value: new THREE.Vector3(0.095, 0.105, 0.135) },
-      uCloudShadow: { value: new THREE.Vector3(0.022, 0.026, 0.038) }
+      uCloudLit: { value: new THREE.Vector3(0.14, 0.15, 0.18) },
+      uCloudShadow: { value: new THREE.Vector3(0.016, 0.019, 0.028) }
     },
     vertexShader: CLOUD_SEA.vertex,
     fragmentShader: CLOUD_SEA.fragment

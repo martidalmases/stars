@@ -9,8 +9,8 @@ import { generatePavement } from "../landscape/pavement.js";
 import { LAYOUT } from "./layout.js";
 
 const COLORS = {
-  ownBag: [0.5, 0.14, 0.09],
-  partnerBag: [0.11, 0.24, 0.3],
+  ownBag: [0.1, 0.2, 0.34],
+  partnerBag: [0.16, 0.27, 0.13],
   ownMat: [0.55, 0.42, 0.14],
   partnerMat: [0.2, 0.32, 0.22],
   strap: [0.08, 0.08, 0.09],

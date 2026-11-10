@@ -3,7 +3,7 @@ import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 import { createCamera, createDreamyController, IS_TOUCH } from "./core/camera.js";
 import { createScene, createSkySphere } from "./core/scene.js";
 import { createRenderer } from "./core/renderer.js";
-import { updateEnvironment } from "./core/environment.js";
+import { updateEnvironment, shared } from "./core/environment.js";
 
 import { createSummit } from "./landscape/summit.js";
 import { createMountains } from "./landscape/mountains.js";
@@ -17,7 +17,7 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.12";
+const SCENE_VERSION = "0.13";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 
@@ -213,8 +213,20 @@ window.addEventListener("resize", () => {
 
 const clock = new THREE.Clock();
 
+// Mentre la portada és a sobre, l'escena no es dibuixa (així la portada va fluida).
+// Si s'obre world.html directament, sempre és activa.
+let sceneActive = window.parent === window;
+let warmupFrames = 3;
+window.addEventListener("message", (event) => {
+  if (event.data && event.data.sceneActive) sceneActive = true;
+});
+
+const rootStyle = document.documentElement.style;
+
 function animate() {
   requestAnimationFrame(animate);
+  if (!sceneActive && warmupFrames <= 0) return;
+  warmupFrames -= 1;
 
   const delta = Math.min(clock.getDelta(), 0.1);
   const t = clock.elapsedTime;
@@ -232,6 +244,9 @@ function animate() {
     const showHint = storyStars.shouldShowClickHint() && !storyOverlay.isOpen() && !hasFinishedExperience;
     clickStarHint.classList.toggle("is-visible", showHint);
   }
+
+  // La llum dels records segueix la flama del fanal.
+  rootStyle.setProperty("--flame", shared.uLanternIntensity.value.toFixed(3));
 
   renderer.render(scene, camera);
 }
