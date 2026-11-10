@@ -175,6 +175,28 @@
       pointer-events: auto;
     }
 
+    /* Botó per apagar o encendre el so. */
+    #sound-toggle {
+      position: fixed;
+      left: 12px;
+      bottom: 10px;
+      z-index: 20;
+      display: none;
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(230, 220, 200, 0.55);
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    #sound-toggle.is-muted {
+      text-decoration: line-through;
+      opacity: 0.5;
+    }
+
     /* Indicador de versió (temporal, per saber què està publicat). */
     #version-tag {
       position: fixed;
@@ -194,7 +216,7 @@
   <main id="mini-game">
     <section class="paper">
       <div id="loading-gate" aria-live="polite">
-        <p class="charging-title">charging memories</p>
+        <p class="charging-title">carregant records</p>
         <p id="charging-points" aria-hidden="true"><span>.</span><span>.</span><span>.</span></p>
       </div>
       <div id="question-wrap" class="question-wrap is-hidden">
@@ -210,7 +232,19 @@
 
   <div id="fade-layer"></div>
   <div id="version-tag"></div>
+  <button id="sound-toggle" type="button" aria-label="So" title="So">♪</button>
 
+  <script type="module">
+    import { startAmbient, unlockAudio, toggleMute } from "./audio/ambient.js";
+    window.startAmbient = startAmbient;
+    // Qualsevol clic prepara l'àudio (sense sonar): així no falla en començar.
+    document.addEventListener("pointerdown", unlockAudio);
+    const btn = document.getElementById("sound-toggle");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      btn.classList.toggle("is-muted", toggleMute());
+    });
+  </script>
   <script>
     // ===== Versió (temporal) =====
     // version.json es llegeix sense memòria cau: és el que hi ha publicat ara mateix.
@@ -458,7 +492,7 @@
       noBtn.disabled = true;
 
       if (!worldLoaded) {
-        // Encara s'està carregant: "charging memories" fins que estigui a punt.
+        // Encara s'està carregant: "carregant records" fins que estigui a punt.
         questionWrap.classList.add("is-hidden");
         loadingGate.classList.remove("is-hidden");
         startChargingPoints();
@@ -479,6 +513,10 @@
 
       miniGame.classList.add("is-fading");
       sceneFrame.style.opacity = "1";
+
+      // Ara sí: comença el so, just quan apareix l'escena.
+      window.startAmbient?.();
+      document.getElementById("sound-toggle").style.display = "block";
 
       await new Promise((resolve) => setTimeout(resolve, 320));
       fadeLayer.classList.remove("is-visible");

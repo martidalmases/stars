@@ -338,76 +338,82 @@ void main() {
 // ------------------------------------------------------------------
 // Mar de núvols
 // ------------------------------------------------------------------
-const CLOUD_FIELD = /* glsl */ `
+
+// Densitat del mar de núvols llegida d'una textura de soroll precalculada
+// (molt més barat que calcular soroll a cada píxel). Canal R: formes grans,
+// canal G: bonys petits (coliflor).
+const CLOUD_DENSITY = /* glsl */ `
+uniform sampler2D uNoise;
 uniform float uTime;
-${NOISE}
-// Soroll "billow": bonys arrodonits com coliflors, que és el que fa que es
-// llegeixin com a núvols i no com a terreny.
-float billow(vec2 p) {
-  float s = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 4; i++) {
-    s += a * (1.0 - abs(vnoise(p) * 2.0 - 1.0));
-    p = p * 2.03 + vec2(13.7, 7.9);
-    a *= 0.5;
-  }
-  return s / 0.9375;
-}
-float cloudField(vec2 p) {
-  // Es desplacen prou de pressa perquè es noti que es mouen.
-  vec2 q = p * 0.0042 + vec2(uTime * 0.0045, uTime * 0.0018);
-  vec2 warp = vec2(fbm3(q * 1.3 + 3.1 - uTime * 0.002), fbm3(q * 1.3 - 1.7));
-  float big = fbm3(q * 0.8 + warp * 0.6);
-  float puffs = billow(q * 2.2 + warp * 0.9);
-  return big * 0.55 + puffs * 0.45;
+float cloudDensity(vec2 p) {
+  vec2 drift = vec2(uTime * 0.0045, uTime * 0.0018);
+  float big = texture2D(uNoise, p * 0.0011 + drift * 0.25).r;
+  float mid = texture2D(uNoise, p * 0.0034 + drift * 0.6 + big * 0.08).g;
+  float small = texture2D(uNoise, p * 0.011 + drift * 1.4).g;
+  return big * 0.55 + mid * 0.33 + small * 0.12;
 }
 `;
 
+// Base del mar de núvols: l'interior fosc (perquè no es vegi a través).
 export const CLOUD_SEA = {
-  // El camp de núvols es calcula als vèrtexs (barat) i el fragment només hi
-  // afegeix una mica de detall: abans era la part més cara de l'escena.
   vertex: /* glsl */ `
-${CLOUD_FIELD}
-uniform float uCloudAmp;
-uniform vec3 uMoonDir;
 varying vec3 vWorld;
-varying float vShade;
-varying float vPuff;
-
 void main() {
   vec4 wp = modelMatrix * vec4(position, 1.0);
   vWorld = wp.xyz;
-  float h = cloudField(wp.xz);
-  float h2 = cloudField(wp.xz + normalize(uMoonDir.xz) * 10.0);
-  vShade = smoothstep(0.25, 0.85, 0.55 + (h - h2) * 11.0);
-  vPuff = smoothstep(0.35, 0.68, h);
-  wp.y += (h - 0.45) * uCloudAmp;
   gl_Position = projectionMatrix * viewMatrix * wp;
 }
 `,
   fragment: /* glsl */ `
-${NOISE}
-uniform float uTime;
+${CLOUD_DENSITY}
 uniform vec3 uHazeColor;
-uniform vec3 uCloudLit;
 uniform vec3 uCloudShadow;
+uniform vec3 uCloudLit;
 varying vec3 vWorld;
-varying float vShade;
-varying float vPuff;
-
 void main() {
-  // Petits bonys a sobre dels grans (detall de coliflor), també en moviment.
-  vec2 dp = vWorld.xz * 0.045 + vec2(uTime * 0.03, uTime * 0.012);
-  float detail = (1.0 - abs(vnoise(dp) * 2.0 - 1.0)) * 0.6 + (1.0 - abs(vnoise(dp * 2.3 + 5.0) * 2.0 - 1.0)) * 0.4 - 0.55;
-  float k = clamp(vShade * 0.6 + vPuff * 0.4 + detail * 0.3, 0.0, 1.0);
-  // Corba de contrast: els caps dels núvols es separen clarament de les valls.
-  k = smoothstep(0.1, 0.9, k);
-  vec3 col = mix(uCloudShadow, uCloudLit, k);
+  float d = cloudDensity(vWorld.xz);
+  vec3 col = mix(uCloudShadow, mix(uCloudShadow, uCloudLit, 0.35), d);
+  float dist = length(vWorld - cameraPosition);
+  col = mix(col, uHazeColor, (1.0 - exp(-dist / 900.0)) * 0.55);
+  gl_FragColor = vec4(col, 1.0);
+}
+`
+};
+
+// Capes translúcides apilades: cada capa només mostra el núvol allà on és prou
+// gruixut per arribar a aquella alçada. Juntes fan volum i vores suaus.
+export const CLOUD_SHELL = {
+  vertex: /* glsl */ `
+varying vec3 vWorld;
+void main() {
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorld = wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`,
+  fragment: /* glsl */ `
+${CLOUD_DENSITY}
+uniform float uLayer;
+uniform vec3 uHazeColor;
+uniform vec3 uCloudShadow;
+uniform vec3 uCloudLit;
+uniform vec3 uMoonDir;
+varying vec3 vWorld;
+void main() {
+  float d = cloudDensity(vWorld.xz);
+  float t = uLayer * 0.62 + 0.18;
+  float a = smoothstep(t - 0.06, t + 0.05, d);
+  if (a < 0.01) discard;
+
+  // Més llum a dalt de tot i a la cara que mira la lluna; fosc a sota.
+  float dl = cloudDensity(vWorld.xz + normalize(uMoonDir.xz) * 14.0);
+  float facing = clamp(0.5 + (d - dl) * 4.0, 0.0, 1.0);
+  float light = clamp(pow(uLayer, 0.8) * 0.75 + facing * 0.35 + (d - t) * 1.5, 0.0, 1.0);
+  vec3 col = mix(uCloudShadow, uCloudLit, light);
 
   float dist = length(vWorld - cameraPosition);
-  float f = 1.0 - exp(-dist / 900.0);
-  col = mix(col, uHazeColor, f * 0.55);
-  gl_FragColor = vec4(col, 1.0);
+  col = mix(col, uHazeColor, (1.0 - exp(-dist / 900.0)) * 0.55);
+  gl_FragColor = vec4(col, a * 0.55);
 }
 `
 };

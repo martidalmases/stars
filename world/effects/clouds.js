@@ -1,31 +1,121 @@
 import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
 import { shared } from "../core/environment.js";
-import { CLOUD_SEA, HIGH_CLOUD } from "../shaders/shaders.js";
+import { CLOUD_SEA, CLOUD_SHELL, HIGH_CLOUD } from "../shaders/shaders.js";
 import { CLOUD_Y } from "../landscape/terrain.js";
 import { mulberry32 } from "../core/noise.js";
 
 // ------------------------------------------------------------------
-// Mar de núvols: un pla ondulat i animat que tapa les valls.
+// Mar de núvols: una base fosca i 8 capes translúcides a sobre.
 // ------------------------------------------------------------------
+
+// Textura de soroll que es repeteix sense costures (R: formes grans, G: bonys).
+function createCloudNoiseTexture(size = 256) {
+  const rng = mulberry32(321);
+  const lattice = (period) => {
+    const g = new Float32Array(period * period);
+    for (let i = 0; i < g.length; i += 1) g[i] = rng();
+    return (x, y) => {
+      const xi = Math.floor(x);
+      const yi = Math.floor(y);
+      const fx = x - xi;
+      const fy = y - yi;
+      const ux = fx * fx * (3 - 2 * fx);
+      const uy = fy * fy * (3 - 2 * fy);
+      const at = (i, j) => g[(((j % period) + period) % period) * period + (((i % period) + period) % period)];
+      const a = at(xi, yi);
+      const b = at(xi + 1, yi);
+      const c = at(xi, yi + 1);
+      const d = at(xi + 1, yi + 1);
+      return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+    };
+  };
+  const octaves = [4, 8, 16, 32, 64].map((p) => ({ p, f: lattice(p) }));
+  const octavesB = [8, 16, 32, 64].map((p) => ({ p, f: lattice(p) }));
+
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let fbm = 0;
+      let amp = 0.5;
+      let norm = 0;
+      octaves.forEach(({ p, f }) => {
+        fbm += f((x / size) * p, (y / size) * p) * amp;
+        norm += amp;
+        amp *= 0.5;
+      });
+      fbm /= norm;
+      // Billow: bonys arrodonits.
+      let bil = 0;
+      amp = 0.5;
+      norm = 0;
+      octavesB.forEach(({ p, f }) => {
+        bil += (1 - Math.abs(f((x / size) * p, (y / size) * p) * 2 - 1)) * amp;
+        norm += amp;
+        amp *= 0.5;
+      });
+      bil /= norm;
+      const i = (y * size + x) * 4;
+      data[i] = Math.round(Math.min(1, Math.max(0, (fbm - 0.2) / 0.6)) * 255);
+      data[i + 1] = Math.round(Math.min(1, Math.max(0, (bil - 0.35) / 0.55)) * 255);
+      data[i + 2] = 0;
+      data[i + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 export function createCloudSea() {
-  const geo = new THREE.RingGeometry(0.5, 1000, 180, 90);
-  geo.rotateX(-Math.PI / 2);
+  const group = new THREE.Group();
+  const noise = createCloudNoiseTexture();
+  const colors = {
+    uCloudLit: { value: new THREE.Vector3(0.15, 0.16, 0.19) },
+    uCloudShadow: { value: new THREE.Vector3(0.018, 0.021, 0.03) }
+  };
 
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      ...shared,
-      uCloudAmp: { value: 36 },
-      uCloudLit: { value: new THREE.Vector3(0.14, 0.15, 0.18) },
-      uCloudShadow: { value: new THREE.Vector3(0.016, 0.019, 0.028) }
-    },
-    vertexShader: CLOUD_SEA.vertex,
-    fragmentShader: CLOUD_SEA.fragment
-  });
+  const base = new THREE.Mesh(
+    new THREE.CircleGeometry(1000, 96),
+    new THREE.ShaderMaterial({
+      uniforms: { ...shared, ...colors, uNoise: { value: noise } },
+      vertexShader: CLOUD_SEA.vertex,
+      fragmentShader: CLOUD_SEA.fragment
+    })
+  );
+  base.rotation.x = -Math.PI / 2;
+  base.position.y = CLOUD_Y - 10;
+  base.frustumCulled = false;
+  group.add(base);
 
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = CLOUD_Y;
-  mesh.frustumCulled = false;
-  return mesh;
+  // Capes: de baix a dalt, uns 22 m de gruix de núvol.
+  const LAYERS = 8;
+  const thickness = 22;
+  const ring = new THREE.CircleGeometry(1000, 96);
+  for (let i = 0; i < LAYERS; i += 1) {
+    const layer = i / (LAYERS - 1);
+    const mesh = new THREE.Mesh(
+      ring,
+      new THREE.ShaderMaterial({
+        uniforms: { ...shared, ...colors, uNoise: { value: noise }, uLayer: { value: layer } },
+        vertexShader: CLOUD_SHELL.vertex,
+        fragmentShader: CLOUD_SHELL.fragment,
+        transparent: true,
+        depthWrite: false
+      })
+    );
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = CLOUD_Y - 10 + layer * thickness;
+    mesh.renderOrder = -1 + i * 0.01;
+    mesh.frustumCulled = false;
+    group.add(mesh);
+  }
+
+  return group;
 }
 
 // ------------------------------------------------------------------

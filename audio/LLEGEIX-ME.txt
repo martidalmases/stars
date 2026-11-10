@@ -1,0 +1,8 @@
+Música: posa aquí un fitxer anomenat musica.mp3 i sonarà en bucle, amb una
+entrada suau, quan comenci l'escena. Si no hi és, només sona l'ambient.
+
+El vent i els grills es generen per codi (no cal cap fitxer). Els volums es
+poden canviar al principi d'ambient.js (MUSIC_VOLUME, WIND_VOLUME, CRICKET_VOLUME).
+
+Fes servir música que tinguis dret a publicar (pròpia, amb llicència lliure o
+comprada amb llicència): la web és pública a GitHub Pages.

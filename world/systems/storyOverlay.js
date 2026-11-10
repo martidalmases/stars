@@ -2,8 +2,9 @@ const IS_TOUCH = !!window.matchMedia?.("(pointer: coarse)").matches;
 const OUTSIDE_HINT = IS_TOUCH ? "toca fora per continuar" : "fes clic fora per continuar";
 
 export class StoryOverlay {
-  constructor({ dataUrl = "./data/story-slides.json" } = {}) {
+  constructor({ dataUrl = "./data/story-slides.json", onClose = null } = {}) {
     this.dataUrl = dataUrl;
+    this.onClose = onClose;
     this.allSlides = [];
     this.slides = [];
     this.currentIndex = 0;
@@ -71,6 +72,7 @@ export class StoryOverlay {
     if (recapturePointer) {
       document.body.requestPointerLock?.();
     }
+    this.onClose?.(this.currentIndex);
   }
 
   _goPrevious() {

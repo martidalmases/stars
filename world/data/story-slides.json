@@ -78,6 +78,13 @@
       "image": "./assets/11.jpg"
     },
     {
+      "title": "Record 12",
+      "place": "Lloc · altitud",
+      "date": "data",
+      "text": "Aquí va el text del record 12. Canvia'l per la història que vulguis explicar.",
+      "image": "./assets/12.jpg"
+    },
+    {
       "title": "t'estimo",
       "text": ""
     }

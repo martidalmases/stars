@@ -17,7 +17,7 @@ import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.14";
+const SCENE_VERSION = "0.15";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 
@@ -34,7 +34,17 @@ const camera = createCamera();
 const renderer = createRenderer();
 document.body.appendChild(renderer.domElement);
 
-const storyOverlay = new StoryOverlay({ dataUrl: "./data/story-slides.json" });
+// Quan es tanca l'últim record (el 12), arriba el final.
+let endingPending = null;
+const storyOverlay = new StoryOverlay({
+  dataUrl: "./data/story-slides.json",
+  onClose: () => {
+    if (!endingPending) return;
+    const finish = endingPending;
+    endingPending = null;
+    finish();
+  }
+});
 await storyOverlay.init();
 
 let hasFinishedExperience = false;
@@ -105,18 +115,7 @@ scene.add(createCloudSea());
 const highClouds = createHighClouds();
 scene.add(highClouds.group);
 
-// Bancs de boira entre les serralades, just per sobre del mar de núvols.
-const mistBanks = createHighClouds({
-  count: 10,
-  seed: 7,
-  elevation: [-2.2, -0.3],
-  distance: [230, 640],
-  widthRange: [220, 420],
-  color: [0.052, 0.063, 0.094],
-  opacity: [0.45, 0.75],
-  speedDeg: [0.05, 0.12]
-});
-scene.add(mistBanks.group);
+
 await breathe();
 
 scene.add(createSummit());
@@ -173,14 +172,18 @@ const storyStars = new StoryStarSystem({
     if (hasFinishedExperience) return;
 
     if (storyStars.isLastStar(index)) {
-      // Última estrella: es tanca la figura, brilla uns segons i arriba el final.
+      // Última estrella: primer el record 12; en tancar-lo, es tanca la figura,
+      // brilla uns segons i arriba el final.
       hasFinishedExperience = true;
-      if (constellation.closed) storyStars.connectPair(index, 0);
-      storyStars.celebrate();
-      setTimeout(() => {
+      endingPending = () => {
         if (document.pointerLockElement === document.body) document.exitPointerLock();
-        triggerEnding(star);
-      }, 2600);
+        if (constellation.closed) storyStars.connectPair(index, 0);
+        storyStars.celebrate();
+        setTimeout(() => triggerEnding(star), 2600);
+      };
+      if (document.pointerLockElement === document.body) document.exitPointerLock();
+      if (storyOverlay.hasSlide(index)) storyOverlay.open(index);
+      else endingPending();
       return;
     }
 
@@ -235,7 +238,6 @@ function animate() {
   updateCamera();
   storyStars.update();
   highClouds.update(delta);
-  mistBanks.update(delta);
   shootingStars.update(delta);
   bivac.update(camera);
   sky.userData.update?.(delta);
