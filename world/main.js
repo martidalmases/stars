@@ -160,6 +160,8 @@ function triggerEnding(star) {
   endingOverlay.style.setProperty("--flash-x", `${x}px`);
   endingOverlay.style.setProperty("--flash-y", `${y}px`);
   endingOverlay.classList.add("is-active");
+  // Al cap d'uns segons, el recordatori d'ESC.
+  setTimeout(() => document.getElementById("ending-esc")?.classList.add("is-visible"), 5000);
 }
 
 const storyStars = new StoryStarSystem({

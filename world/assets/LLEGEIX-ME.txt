@@ -1,5 +1,7 @@
 Posa aquí les fotos dels records amb aquests noms:
-  01.jpg, 02.jpg, ... 11.jpg
-(una per cada estrella; la 12a és el final i no en porta).
+  01.jpg, 02.jpg, ... 12.jpg
+(una per cada estrella, en l'ordre en què s'encenen).
+Qualsevol format raonable (vertical, horitzontal o quadrat) queda bé a la polaroid.
 Si una foto no hi és, es mostra la imatge de l'estrella.
-També pots fer servir .png: només cal canviar el nom a data/story-slides.json.
+Si fas servir .png o un altre nom, canvia el camp "image" a data/story-slides.json.
+Consell: fotos d'uns 1600 px d'ample com a màxim, perquè carregui ràpid.
