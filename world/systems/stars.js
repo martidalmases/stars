@@ -202,7 +202,8 @@ export class StoryStarSystem {
     this.clusterScale = clusterScale;
 
     this.stars = [];
-    this.coneAngle = THREE.MathUtils.degToRad(18);
+    // Cal mirar l'estrella força de dret perquè s'encengui (i es pugui clicar).
+    this.coneAngle = THREE.MathUtils.degToRad(12);
     this.lines = [];
     this.enabled = true;
 

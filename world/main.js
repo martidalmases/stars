@@ -236,7 +236,9 @@ function updateAim() {
   camera.getWorldDirection(aimDir);
   aimTo.copy(target.position).sub(camera.position).normalize();
   const angle = aimDir.angleTo(aimTo);
-  aimDot.classList.toggle("is-on-target", angle < storyStars.coneAngle);
+  // L'anell surt només quan l'estrella ja s'ha encès (ha crescut gairebé del tot).
+  const lit = target.currentSize > target.selectedSize + target.baseSize * 1.3;
+  aimDot.classList.toggle("is-on-target", angle < storyStars.coneAngle && lit);
 
   // La fletxa només surt quan l'estrella és lluny del centre (o fora de pantalla).
   const far = angle > THREE.MathUtils.degToRad(28);
