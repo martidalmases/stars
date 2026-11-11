@@ -1,8 +1,18 @@
-Música: posa aquí un fitxer anomenat musica.mp3 i sonarà en bucle, amb una
-entrada suau, quan comenci l'escena. Si no hi és, només sona l'ambient.
+Posa aquí els tres bucles de so (amb aquests noms exactes):
 
-El vent i els grills es generen per codi (no cal cap fitxer). Els volums es
-poden canviar al principi d'ambient.js (MUSIC_VOLUME, WIND_VOLUME, CRICKET_VOLUME).
+  musica.ogg   (o .mp3, .m4a, .wav)
+  vent.ogg
+  grills.ogg
 
-Fes servir música que tinguis dret a publicar (pròpia, amb llicència lliure o
-comprada amb llicència): la web és pública a GitHub Pages.
+Tots comencen a volum 0 quan apareix l'escena i pugen suaument:
+  vent    -> en 4 s
+  grills  -> en 6 s, comença 1,5 s més tard
+  musica  -> en 8 s, comença 2,5 s més tard
+Els volums i els temps es canvien a TRACKS, al principi de ambient.js.
+
+Si en falta algun, no passa res: simplement no sona.
+
+Consell: .ogg o .wav fan bucles perfectes; l'.mp3 de vegades deixa un
+petit silenci entre volta i volta.
+
+Fes servir sons i música que tinguis dret a publicar (la web és pública).

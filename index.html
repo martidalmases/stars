@@ -107,11 +107,14 @@
       display: none;
     }
 
+    /* Zona on es pot moure el botó: més ample que el text i més alta. */
     .button-area {
       position: relative;
-      width: 100%;
-      height: 280px;
+      left: 50%;
+      width: min(1000px, 90vw);
+      height: min(420px, 52vh);
       margin-top: 28px;
+      transform: translateX(-50%);
     }
 
     .btn {
@@ -298,16 +301,24 @@
     let noCurrentX = null;
     let noCurrentY = null;
 
+    // Llocs on pot fugir el botó (graella 4×4 per tota la zona).
     const NO_POSITIONS = [
-      { x: 0.16, y: 0.2 },
-      { x: 0.5, y: 0.18 },
-      { x: 0.82, y: 0.22 },
-      { x: 0.2, y: 0.5 },
-      { x: 0.5, y: 0.52 },
-      { x: 0.8, y: 0.48 },
-      { x: 0.14, y: 0.76 },
-      { x: 0.5, y: 0.8 },
-      { x: 0.84, y: 0.74 }
+      { x: 0.06, y: 0.06 },
+      { x: 0.36, y: 0.06 },
+      { x: 0.64, y: 0.06 },
+      { x: 0.94, y: 0.06 },
+      { x: 0.06, y: 0.36 },
+      { x: 0.36, y: 0.36 },
+      { x: 0.64, y: 0.36 },
+      { x: 0.94, y: 0.36 },
+      { x: 0.06, y: 0.64 },
+      { x: 0.36, y: 0.64 },
+      { x: 0.64, y: 0.64 },
+      { x: 0.94, y: 0.64 },
+      { x: 0.06, y: 0.94 },
+      { x: 0.36, y: 0.94 },
+      { x: 0.64, y: 0.94 },
+      { x: 0.94, y: 0.94 }
     ];
 
     function typeText(text) {

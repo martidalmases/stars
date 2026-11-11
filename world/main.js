@@ -12,12 +12,12 @@ import { createVegetation } from "./effects/grass.js";
 import { createShootingStars } from "./effects/shootingStar.js";
 import { createBivac } from "./bivac/bivac.js";
 
-import { StoryStarSystem } from "./systems/stars.js";
+import { StoryStarSystem, STORY_STATE } from "./systems/stars.js";
 import { StoryOverlay } from "./systems/storyOverlay.js";
 import { CONSTELLATIONS, ACTIVE_CONSTELLATION } from "./data/constellation.js";
 
 // Versió de l'escena (temporal). Ha de coincidir amb version.json.
-const SCENE_VERSION = "0.15";
+const SCENE_VERSION = "0.16";
 window.parent?.postMessage({ sceneVersion: SCENE_VERSION }, "*");
 console.log(`[laurins] escena versió ${SCENE_VERSION}`);
 
@@ -203,12 +203,51 @@ storyStars.setViewportSize(window.innerWidth, window.innerHeight);
 // Redimensionar
 // ==============================
 
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+function fitToWindow() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  storyStars.setViewportSize(window.innerWidth, window.innerHeight);
-});
+  renderer.setSize(w, h, false);
+  storyStars.setViewportSize(w, h);
+}
+let lastW = 0;
+let lastH = 0;
+window.addEventListener("resize", fitToWindow);
+
+// ==============================
+// Punter cap a l'estrella
+// ==============================
+
+const aimDot = document.getElementById("aim-dot");
+const aimArrow = document.getElementById("aim-arrow");
+const aimDir = new THREE.Vector3();
+const aimTo = new THREE.Vector3();
+const aimLocal = new THREE.Vector3();
+
+function updateAim() {
+  const target = storyStars.stars.find((st) => st.state === STORY_STATE.SELECTED);
+  const hidden = !target || storyOverlay.isOpen() || hasFinishedExperience;
+  aimDot.classList.toggle("is-hidden", hidden);
+  if (hidden) {
+    aimArrow.classList.add("is-hidden");
+    return;
+  }
+  camera.getWorldDirection(aimDir);
+  aimTo.copy(target.position).sub(camera.position).normalize();
+  const angle = aimDir.angleTo(aimTo);
+  aimDot.classList.toggle("is-on-target", angle < storyStars.coneAngle);
+
+  // La fletxa només surt quan l'estrella és lluny del centre (o fora de pantalla).
+  const far = angle > THREE.MathUtils.degToRad(28);
+  aimArrow.classList.toggle("is-hidden", !far);
+  if (far) {
+    aimLocal.copy(aimTo).applyQuaternion(camera.quaternion.clone().invert());
+    const a = Math.atan2(-aimLocal.y, aimLocal.x);
+    aimArrow.style.setProperty("--aim-angle", `${a.toFixed(3)}rad`);
+  }
+}
+
 
 // ==============================
 // Bucle d'animació
@@ -231,6 +270,13 @@ function animate() {
   if (!sceneActive && warmupFrames <= 0) return;
   warmupFrames -= 1;
 
+  // Pantalla completa (F11) o canvi de mida: ajusta-ho sempre a la finestra.
+  if (window.innerWidth !== lastW || window.innerHeight !== lastH) {
+    lastW = window.innerWidth;
+    lastH = window.innerHeight;
+    fitToWindow();
+  }
+
   const delta = Math.min(clock.getDelta(), 0.1);
   const t = clock.elapsedTime;
 
@@ -240,6 +286,7 @@ function animate() {
   highClouds.update(delta);
   shootingStars.update(delta);
   bivac.update(camera);
+  updateAim();
   sky.userData.update?.(delta);
 
   if (clickStarHint) {

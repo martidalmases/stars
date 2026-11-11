@@ -451,3 +451,50 @@
   90% { transform: translate(3%, -7%); }
   100% { transform: translate(0, 0); }
 }
+
+/* ===== Punter subtil per trobar l'estrella ===== */
+/* Punt al centre de la mirada: quan l'estrella hi és a dins, s'obre en un anell. */
+#aim-dot {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(235, 228, 210, 0.28);
+  pointer-events: none;
+  z-index: 13;
+  transition: width 260ms ease, height 260ms ease, margin 260ms ease, background 260ms ease, box-shadow 260ms ease, opacity 400ms ease;
+}
+
+#aim-dot.is-on-target {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(255, 228, 180, 0.55), 0 0 12px rgba(255, 200, 140, 0.25);
+}
+
+#aim-dot.is-hidden,
+#aim-arrow.is-hidden {
+  opacity: 0;
+}
+
+/* Fletxeta a prop del centre que indica cap on és l'estrella quan no es veu. */
+#aim-arrow {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin: -6px 0 0 -4px;
+  border-left: 8px solid rgba(235, 228, 210, 0.32);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  pointer-events: none;
+  z-index: 13;
+  transform: rotate(var(--aim-angle, 0rad)) translateX(70px);
+  transform-origin: 4px 6px;
+  transition: opacity 400ms ease;
+}

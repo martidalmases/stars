@@ -394,26 +394,32 @@ void main() {
   fragment: /* glsl */ `
 ${CLOUD_DENSITY}
 uniform float uLayer;
+uniform float uLayerStep;
 uniform vec3 uHazeColor;
 uniform vec3 uCloudShadow;
 uniform vec3 uCloudLit;
 uniform vec3 uMoonDir;
 varying vec3 vWorld;
+
+float dither(vec2 p) {
+  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main() {
   float d = cloudDensity(vWorld.xz);
-  float t = uLayer * 0.62 + 0.18;
-  float a = smoothstep(t - 0.06, t + 0.05, d);
+  // Llindar amb soroll per píxel: trenca les línies on s'acaba cada capa.
+  float t = uLayer * 0.62 + 0.18 + (dither(gl_FragCoord.xy + uLayer * 91.0) - 0.5) * uLayerStep * 1.2;
+  float a = smoothstep(t - 0.12, t + 0.1, d);
   if (a < 0.01) discard;
 
-  // Més llum a dalt de tot i a la cara que mira la lluna; fosc a sota.
-  float dl = cloudDensity(vWorld.xz + normalize(uMoonDir.xz) * 14.0);
+  float dl = texture2D(uNoise, (vWorld.xz + normalize(uMoonDir.xz) * 14.0) * 0.0011 + vec2(uTime * 0.0045, uTime * 0.0018) * 0.25).r;
   float facing = clamp(0.5 + (d - dl) * 4.0, 0.0, 1.0);
-  float light = clamp(pow(uLayer, 0.8) * 0.75 + facing * 0.35 + (d - t) * 1.5, 0.0, 1.0);
+  float light = clamp(pow(uLayer, 0.8) * 0.75 + facing * 0.35 + (d - t) * 1.2, 0.0, 1.0);
   vec3 col = mix(uCloudShadow, uCloudLit, light);
 
   float dist = length(vWorld - cameraPosition);
   col = mix(col, uHazeColor, (1.0 - exp(-dist / 900.0)) * 0.55);
-  gl_FragColor = vec4(col, a * 0.55);
+  gl_FragColor = vec4(col, a * 0.4);
 }
 `
 };

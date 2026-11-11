@@ -93,7 +93,7 @@ export function createCloudSea() {
   group.add(base);
 
   // Capes: de baix a dalt, uns 22 m de gruix de núvol.
-  const LAYERS = 8;
+  const LAYERS = 12;
   const thickness = 22;
   const ring = new THREE.CircleGeometry(1000, 96);
   for (let i = 0; i < LAYERS; i += 1) {
@@ -101,7 +101,7 @@ export function createCloudSea() {
     const mesh = new THREE.Mesh(
       ring,
       new THREE.ShaderMaterial({
-        uniforms: { ...shared, ...colors, uNoise: { value: noise }, uLayer: { value: layer } },
+        uniforms: { ...shared, ...colors, uNoise: { value: noise }, uLayer: { value: layer }, uLayerStep: { value: 0.62 / (LAYERS - 1) } },
         vertexShader: CLOUD_SHELL.vertex,
         fragmentShader: CLOUD_SHELL.fragment,
         transparent: true,
