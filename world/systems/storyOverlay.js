@@ -28,6 +28,26 @@ export class StoryOverlay {
     this.allSlides = await this._loadSlides();
     this.slides = this.allSlides.length > 1 ? this.allSlides.slice(0, -1) : this.allSlides;
     this._buildDom();
+    this._preloadImages();
+  }
+
+  // Descarrega i descodifica totes les fotos en segon pla, una darrere l'altra,
+  // perquè quan s'obri un record la foto ja hi sigui.
+  _preloadImages() {
+    this.preloaded = new Map();
+    const queue = this.slides.map((slide) => slide.image).filter(Boolean);
+    const next = () => {
+      const src = queue.shift();
+      if (!src) return;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = src;
+      this.preloaded.set(src, img);
+      const done = () => setTimeout(next, 50);
+      (img.decode ? img.decode() : Promise.resolve()).then(done, done);
+    };
+    // Comença quan l'escena ja està en marxa.
+    setTimeout(next, 1500);
   }
 
   isOpen() {
@@ -103,7 +123,15 @@ export class StoryOverlay {
     if (!slide) return;
 
     this.card.classList.remove("story-overlay__card--portrait", "story-overlay__card--landscape");
+    // Mai es veu la foto anterior: s'amaga fins que la nova està a punt.
+    const cached = this.preloaded?.get(slide.image);
+    const ready = cached && cached.complete && cached.naturalWidth > 0;
+    if (!ready) this.image.style.visibility = "hidden";
     this.image.src = slide.image;
+    if (ready) {
+      this.image.style.visibility = "";
+      this._syncCardOrientation();
+    }
     this.image.alt = slide.title;
     this.title.textContent = slide.title;
     this.caption.textContent = slide.title;
@@ -208,7 +236,10 @@ export class StoryOverlay {
 
     this.prevBtn.addEventListener("click", () => this._goPrevious());
     this.nextBtn.addEventListener("click", () => this._goNext());
-    this.image.addEventListener("load", () => this._syncCardOrientation());
+    this.image.addEventListener("load", () => {
+      this._syncCardOrientation();
+      this.image.style.visibility = "";
+    });
     // Si la foto encara no hi és, es mostra l'estrella.
     this.image.addEventListener("error", () => {
       if (!this.image.src.endsWith("/star.png")) this.image.src = "./star.png";
