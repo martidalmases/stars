@@ -1,24 +1,24 @@
 {
   "slides": [
     {
-      "title": "Record 1",
-      "place": "Lloc · altitud",
-      "date": "data",
-      "text": "Aquí va el text del record 1. Canvia'l per la història que vulguis explicar.",
+      "title": "Ràpels junts",
+      "place": "Montserrat",
+      "date": "Novembre",
+      "text": "Aquí va començar tot. Ens estàvem coneixent encara, i era doble l'aventura. M'ho vaig passar genial, i encara que diguis que jo ni pinxo ni corto, crec que ho vaig fer prou bé. Tot un precedent per les aventures que fariem junts aquest any.",
       "image": "./assets/01.jpg"
     },
     {
-      "title": "Record 2",
-      "place": "Lloc · altitud",
-      "date": "data",
-      "text": "Aquí va el text del record 2. Canvia'l per la història que vulguis explicar.",
+      "title": "Fieston de cap d'any",
+      "place": "Vacarisses",
+      "date": "Desembre",
+      "text": "Post accident, però em vas cuidar moltíssim. Era el primer cop que coneixia a totes les amiguis, i ens ho vem passar realment bé ;). M'encanta aquesta foto, tot i el fotobomb del teu veí vaquero, perquè estàs preciosa.",
       "image": "./assets/02.jpg"
     },
     {
-      "title": "Record 3",
-      "place": "Lloc · altitud",
-      "date": "data",
-      "text": "Aquí va el text del record 3. Canvia'l per la història que vulguis explicar.",
+      "title": "Donuts",
+      "place": "Puigcerdà",
+      "date": "Gener",
+      "text": "Còmplices de donuts al cotxe de nit. Era el viatge d'esquí a França amb la Dals i el Guillemet. M'encantes, i m'encanta com de normal és fer això amv tu, perquè som els dos uns golosos. Una mica de fomo no esquiar, i esper-ho poder tornar-hi a anar junts aviat.",
       "image": "./assets/03.jpg"
     },
     {
